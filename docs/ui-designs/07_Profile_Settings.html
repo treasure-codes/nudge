@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-tertiary-fixed": "#ffffff",
+              "surface-dim": "#dadada",
+              "surface-container": "#eeeeee",
+              "primary": "#000000",
+              "secondary-container": "#63ef7b",
+              "on-surface": "#1a1c1c",
+              "surface-container-highest": "#e2e2e2",
+              "surface-container-low": "#f3f3f4",
+              "tertiary-fixed": "#5e5e5e",
+              "surface-bright": "#f9f9f9",
+              "on-surface-variant": "#474747",
+              "secondary-fixed": "#53e16f",
+              "secondary-fixed-dim": "#30c456",
+              "surface-container-high": "#e8e8e8",
+              "inverse-primary": "#c6c6c6",
+              "surface": "#f9f9f9",
+              "on-tertiary-container": "#ffffff",
+              "surface-container-lowest": "#ffffff",
+              "on-primary-fixed": "#ffffff",
+              "tertiary-fixed-dim": "#474747",
+              "surface-variant": "#e2e2e2",
+              "primary-container": "#3b3b3b",
+              "on-primary-fixed-variant": "#e2e2e2",
+              "error": "#ba1a1a",
+              "tertiary-container": "#747474",
+              "on-error": "#ffffff",
+              "error-container": "#ffdad6",
+              "on-primary": "#e2e2e2",
+              "on-error-container": "#410002",
+              "on-tertiary-fixed-variant": "#e2e2e2",
+              "on-tertiary": "#e2e2e2",
+              "on-secondary-fixed-variant": "#004616",
+              "inverse-surface": "#2f3131",
+              "on-secondary-container": "#002107",
+              "inverse-on-surface": "#f0f1f1",
+              "background": "#f9f9f9",
+              "tertiary": "#3b3b3b",
+              "outline": "#777777",
+              "on-secondary": "#ffffff",
+              "on-primary-container": "#ffffff",
+              "secondary": "#006e28",
+              "primary-fixed": "#5e5e5e",
+              "outline-variant": "#c6c6c6",
+              "primary-fixed-dim": "#474747",
+              "surface-tint": "#5e5e5e",
+              "on-background": "#1a1c1c",
+              "on-secondary-fixed": "#002107"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #FFFFFF;
+            color: #000000;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body antialiased">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-white/80 dark:bg-black/80 backdrop-blur-xl">
+<nav class="flex items-center justify-between px-8 py-6 max-w-full mx-auto">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-black dark:text-white active:scale-95 transition-transform duration-200 cursor-pointer" data-icon="arrow_back">arrow_back</span>
+<span class="font-['Inter'] font-black text-2xl tracking-tighter text-black dark:text-white uppercase">Nudge</span>
+</div>
+<div class="hidden md:flex items-center gap-8">
+<span class="text-neutral-500 dark:text-neutral-400 font-medium hover:opacity-70 transition-opacity cursor-pointer">Home</span>
+<span class="text-neutral-500 dark:text-neutral-400 font-medium hover:opacity-70 transition-opacity cursor-pointer">Security</span>
+<span class="text-neutral-500 dark:text-neutral-400 font-medium hover:opacity-70 transition-opacity cursor-pointer">Notifications</span>
+<span class="text-black dark:text-white font-bold hover:opacity-70 transition-opacity cursor-pointer">Profile</span>
+</div>
+</nav>
+</header>
+<main class="pt-32 pb-32 px-8 max-w-2xl mx-auto">
+<!-- Hero Profile Section -->
+<section class="mb-16">
+<div class="w-24 h-24 rounded-full overflow-hidden mb-8 bg-surface-container">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="High-contrast black and white portrait of a person with minimalist aesthetic and dramatic soft lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFluAzJUOXuTEJzGVUR2EZR5QrNcPpqjODxKnOfjbErKLFBaaQ_JKGTGslgTzjZLQNVfJHrF4mTAXrrzC8jlC0jPhME80bflIK9EFtTVUMYeNJxevSAgsm6euiN7eno_J9dhW8J2Z9rI7r7N0Yc4OjuIc5ngQzKVrXtHRp4zrj6vUyVD6i9_X3kmF1rMixb6NZo7WlOzkfKId0KL3WBaxKevMhZ80Y9kuDmeYHoP0Ul2IWoB5c9x1nv4g_Tqrp9tQ5hAHJkHHLNyqG"/>
+</div>
+<h1 class="text-[2rem] font-black tracking-tight mb-2 leading-none uppercase">Your Settings</h1>
+<p class="text-on-surface-variant font-medium text-lg">Manage your personal preferences</p>
+</section>
+<!-- Settings List -->
+<div class="flex flex-col space-y-12">
+<!-- List Item: Emergency Contacts -->
+<button class="flex items-center justify-between group text-left w-full active:scale-95 transition-transform duration-200">
+<div class="flex flex-col">
+<span class="text-xs font-bold tracking-widest uppercase text-on-surface-variant mb-1">Safety</span>
+<span class="text-xl font-bold tracking-tight">Emergency Contacts</span>
+</div>
+<span class="material-symbols-outlined text-black group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</button>
+<!-- List Item: Alarm Sound -->
+<button class="flex items-center justify-between group text-left w-full active:scale-95 transition-transform duration-200">
+<div class="flex flex-col">
+<span class="text-xs font-bold tracking-widest uppercase text-on-surface-variant mb-1">Audio</span>
+<span class="text-xl font-bold tracking-tight">Alarm Sound</span>
+</div>
+<span class="material-symbols-outlined text-black group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</button>
+<!-- List Item: Privacy & Location -->
+<button class="flex items-center justify-between group text-left w-full active:scale-95 transition-transform duration-200">
+<div class="flex flex-col">
+<span class="text-xs font-bold tracking-widest uppercase text-on-surface-variant mb-1">Permissions</span>
+<span class="text-xl font-bold tracking-tight">Privacy &amp; Location</span>
+</div>
+<span class="material-symbols-outlined text-black group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</button>
+<!-- List Item: Sign Out -->
+<button class="flex items-center justify-between group text-left w-full active:scale-95 transition-transform duration-200 mt-12 pt-12">
+<div class="flex flex-col">
+<span class="text-xs font-bold tracking-widest uppercase text-on-surface-variant mb-1">Account</span>
+<span class="text-xl font-bold tracking-tight">Sign Out</span>
+</div>
+<span class="material-symbols-outlined text-black group-hover:translate-x-1 transition-transform" data-icon="logout">logout</span>
+</button>
+</div>
+<!-- Premium Upsell Card (Bento Style) -->
+<section class="mt-24">
+<div class="bg-primary text-white p-10 rounded-xl flex flex-col justify-between aspect-square md:aspect-video relative overflow-hidden">
+<div class="z-10">
+<h2 class="text-3xl font-black tracking-tighter uppercase mb-4 leading-tight">Pro<br/>Security</h2>
+<p class="text-on-primary-fixed-variant text-lg max-w-xs">Unlock 24/7 monitoring and advanced encryption for your peace of mind.</p>
+</div>
+<button class="z-10 mt-8 bg-white text-black px-8 py-4 rounded-full font-bold self-start active:scale-95 transition-transform">
+                    Upgrade Now
+                </button>
+<div class="absolute -right-12 -bottom-12 w-64 h-64 bg-secondary-container rounded-full blur-[80px] opacity-20"></div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 pb-safe bg-white/80 dark:bg-black/80 backdrop-blur-xl shadow-[0_-8px_32px_rgba(0,0,0,0.04)]">
+<div class="flex justify-around items-center px-6 py-4 w-full">
+<div class="flex flex-col items-center justify-center text-neutral-400 dark:text-neutral-600 p-4 hover:text-black dark:hover:text-white transition-colors active:scale-90 transition-all duration-300 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="home_max">home_max</span>
+</div>
+<div class="flex flex-col items-center justify-center text-neutral-400 dark:text-neutral-600 p-4 hover:text-black dark:hover:text-white transition-colors active:scale-90 transition-all duration-300 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="security">security</span>
+</div>
+<div class="flex flex-col items-center justify-center text-neutral-400 dark:text-neutral-600 p-4 hover:text-black dark:hover:text-white transition-colors active:scale-90 transition-all duration-300 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-black dark:bg-white text-white dark:text-black rounded-full p-4 scale-110 active:scale-90 transition-all duration-300 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="person" style="font-variation-settings: 'FILL' 1;">person</span>
+</div>
+</div>
+</nav>
+</body></html>

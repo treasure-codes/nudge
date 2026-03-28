@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/treas/OneDrive/Desktop/nudge-1 -type f \\\\\\(-name *.html -o -name *.png \\\\\\))",
+      "Bash(npm install:*)",
+      "Bash(npm view:*)",
+      "Bash(node --input-type=module:*)",
+      "Bash(node -e \"const sdk = require\\(''@infobip-api/sdk''\\); console.log\\(Object.keys\\(sdk\\).slice\\(0,20\\)\\)\")",
+      "Bash(node -e \":*)"
+    ]
+  }
+}

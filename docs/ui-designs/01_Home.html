@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Nudge - Sleep on your commute</title>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols Outlined -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-secondary-fixed-variant": "#004616",
+              "outline": "#777777",
+              "on-tertiary": "#e2e2e2",
+              "secondary-fixed-dim": "#30c456",
+              "surface-dim": "#dadada",
+              "secondary-container": "#63ef7b",
+              "on-secondary-fixed": "#002107",
+              "background": "#f9f9f9",
+              "primary-fixed-dim": "#474747",
+              "on-secondary": "#ffffff",
+              "inverse-surface": "#2f3131",
+              "on-error": "#ffffff",
+              "surface-container": "#eeeeee",
+              "on-primary-fixed-variant": "#e2e2e2",
+              "on-surface-variant": "#474747",
+              "surface": "#f9f9f9",
+              "inverse-primary": "#c6c6c6",
+              "tertiary-fixed-dim": "#474747",
+              "primary": "#000000",
+              "tertiary-container": "#747474",
+              "inverse-on-surface": "#f0f1f1",
+              "primary-fixed": "#5e5e5e",
+              "on-surface": "#1a1c1c",
+              "surface-container-low": "#f3f3f4",
+              "error-container": "#ffdad6",
+              "secondary-fixed": "#53e16f",
+              "surface-container-high": "#e8e8e8",
+              "on-tertiary-fixed-variant": "#e2e2e2",
+              "on-error-container": "#410002",
+              "surface-variant": "#e2e2e2",
+              "surface-container-highest": "#e2e2e2",
+              "surface-container-lowest": "#ffffff",
+              "on-primary": "#e2e2e2",
+              "secondary": "#006e28",
+              "on-secondary-container": "#002107",
+              "surface-bright": "#f9f9f9",
+              "tertiary-fixed": "#5e5e5e",
+              "on-primary-fixed": "#ffffff",
+              "on-background": "#1a1c1c",
+              "on-primary-container": "#ffffff",
+              "surface-tint": "#5e5e5e",
+              "primary-container": "#3b3b3b",
+              "on-tertiary-fixed": "#ffffff",
+              "tertiary": "#3b3b3b",
+              "on-tertiary-container": "#ffffff",
+              "error": "#ba1a1a",
+              "outline-variant": "#c6c6c6"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #ffffff;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-container-lowest text-on-surface min-h-screen flex flex-col">
+<!-- Top Navigation Anchor -->
+<header class="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl">
+<div class="flex justify-between items-center px-8 py-6 w-full max-w-screen-xl mx-auto">
+<div class="text-xl font-black text-black tracking-tighter">
+                Nudge
+            </div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-black" data-icon="notifications_active">notifications_active</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col px-8 pt-32 pb-12 max-w-[375px] mx-auto w-full">
+<!-- App Icon Anchor -->
+<div class="mb-12 flex justify-start">
+<div class="w-12 h-12 bg-primary flex items-center justify-center rounded-2xl">
+<span class="material-symbols-outlined text-white text-3xl" data-icon="shield_heart" style="font-variation-settings: 'FILL' 1;">shield_with_heart</span>
+</div>
+</div>
+<!-- Hero Typography Section -->
+<section class="space-y-6 mb-16">
+<h1 class="text-[3.5rem] leading-[1.1] font-black tracking-tighter text-primary">
+                Sleep on your commute.
+            </h1>
+<p class="text-[1.125rem] text-on-surface-variant leading-relaxed max-w-[280px]">
+                We will make sure you get off at the right stop.
+            </p>
+</section>
+<!-- Feature Editorial List -->
+<section class="space-y-8 mb-20">
+<div class="flex items-center gap-5">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container text-xl" data-icon="check" style="font-variation-settings: 'wght' 700;">check</span>
+</div>
+<span class="text-[1rem] font-medium text-on-surface">Wake you before your stop</span>
+</div>
+<div class="flex items-center gap-5">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container text-xl" data-icon="check" style="font-variation-settings: 'wght' 700;">check</span>
+</div>
+<span class="text-[1rem] font-medium text-on-surface">Get you home if you miss it</span>
+</div>
+<div class="flex items-center gap-5">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container text-xl" data-icon="check" style="font-variation-settings: 'wght' 700;">check</span>
+</div>
+<span class="text-[1rem] font-medium text-on-surface">Alert someone who cares</span>
+</div>
+<div class="flex items-center gap-5">
+<div class="flex-shrink-0 w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-secondary-container text-xl" data-icon="check" style="font-variation-settings: 'wght' 700;">check</span>
+</div>
+<span class="text-[1rem] font-medium text-on-surface">Works offline</span>
+</div>
+</section>
+<!-- Image Accent (Visual Breathing Room) -->
+<div class="mb-16 overflow-hidden rounded-xl bg-surface-container-low h-48 w-full">
+<img alt="Commuter sleeping on train" class="w-full h-full object-cover grayscale opacity-80" data-alt="atmospheric black and white photo of a passenger peacefully leaning against a train window with soft city light reflections" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBHCQIN3Bt1iuzFl8Tn2hdRmX9LFTErCj7Uxq47aCvsiTSMraOzlhHf1OmN-7OZQVvjb1JVe0fVtjXOgGIeqE5EHta8Dae4T9vWBe6A3XuvoMFOW3BLePSshBVqb4T_eqBFLsfkHBiFm6XbT2quv5OYnh-NuQWuQjeKOq4-T0AHmUv76YYrmlAtuxgyVP9orPwCIvBNTkFrT-amPEeEdWPljKYEXaXaCjGcbsq1tOLDMTAOMWr9VPcHc9CIhc9QSXZQotFcyvANkCfn"/>
+</div>
+<!-- Action Section -->
+<footer class="mt-auto space-y-6 text-center">
+<button class="w-full h-[56px] rounded-full bg-primary text-surface-container-lowest font-bold text-lg hover:opacity-90 transition-opacity active:scale-[0.98] duration-200">
+                Get Started
+            </button>
+<a class="block text-[12px] uppercase tracking-widest font-medium text-outline hover:text-primary transition-colors" href="#">
+                Already set up? Start a journey
+            </a>
+</footer>
+</main>
+<!-- Global Footer -->
+<footer class="w-full py-12 px-8 bg-gray-50 mt-12">
+<div class="flex flex-col md:flex-row justify-between items-center gap-6 max-w-screen-xl mx-auto">
+<p class="text-[12px] uppercase tracking-widest font-medium text-neutral-500">
+                © 2024 Nudge Editorial. All rights reserved.
+            </p>
+<div class="flex gap-8">
+<a class="text-[12px] uppercase tracking-widest font-medium text-neutral-500 hover:text-black transition-colors" href="#">Privacy</a>
+<a class="text-[12px] uppercase tracking-widest font-medium text-neutral-500 hover:text-black transition-colors" href="#">Terms</a>
+<a class="text-[12px] uppercase tracking-widest font-medium text-neutral-500 hover:text-black transition-colors" href="#">Support</a>
+</div>
+</div>
+</footer>
+</body></html>
