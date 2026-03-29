@@ -6,7 +6,8 @@
       "Bash(npm view:*)",
       "Bash(node --input-type=module:*)",
       "Bash(node -e \"const sdk = require\\(''@infobip-api/sdk''\\); console.log\\(Object.keys\\(sdk\\).slice\\(0,20\\)\\)\")",
-      "Bash(node -e \":*)"
+      "Bash(node -e \":*)",
+      "Bash(xargs grep:*)"
     ]
   }
 }

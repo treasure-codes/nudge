@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
+import { haversine } from '@/lib/haversine'
 
 export default function WatchPage() {
   const { token } = useParams()
@@ -47,14 +48,16 @@ export default function WatchPage() {
     )
   }
 
-  const distLabel = journey.distanceToStop != null
-    ? journey.distanceToStop >= 1000
-      ? `${(journey.distanceToStop / 1000).toFixed(1)} km away`
-      : `${journey.distanceToStop} m away`
+  const displayDist = journey.simMode ? journey.distanceToStop : (journey.apiDistance ?? journey.distanceToStop)
+  
+  const distLabel = displayDist != null
+    ? displayDist >= 1000
+      ? `${(displayDist / 1000).toFixed(1)} km away`
+      : `${Math.round(displayDist)} m away`
     : null
 
-  const progressPct = journey.distanceToStop != null
-    ? Math.min(92, Math.max(8, 100 - (journey.distanceToStop / 2000) * 100))
+  const progressPct = displayDist != null
+    ? Math.min(92, Math.max(8, 100 - (displayDist / 2000) * 100))
     : 40
 
   const isAlarm  = journey.state === 'PHASE_2'
@@ -196,12 +199,41 @@ export default function WatchPage() {
               </div>
             </div>
             {lastUpdated && (
-              <p className="text-[0.6875rem] text-outline">
+              <p className="text-[0.6875rem] text-outline mt-3">
                 Last updated {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </p>
             )}
           </div>
         </div>
+
+        {/* Route Steps / Stops List */}
+        {journey.routeSteps?.length > 0 && (
+          <div className="bg-surface-container rounded-2xl p-6 mb-4 space-y-4">
+            <h4 className="font-bold text-[0.75rem] uppercase tracking-widest text-on-surface-variant border-b border-outline-variant/30 pb-2">Transit Stops</h4>
+            <div className="flex flex-col gap-3">
+              {journey.routeSteps.map((step) => {
+                const distDist = journey.lat && journey.lng ? haversine(journey.lat, journey.lng, step.lat, step.lng) : null
+                const distLabel = distDist !== null ? (distDist >= 1000 ? `${(distDist / 1000).toFixed(1)} km` : `${Math.round(distDist)} m`) : '—'
+                const isAlighting = step.type === 'alighting'
+                return (
+                  <div key={step.id} className={`flex justify-between items-center p-4 rounded-xl border ${isAlighting ? 'bg-white/80 border-primary/20' : 'bg-white/40 border-white/20'}`}>
+                    <div className="flex items-center gap-3 flex-1 min-w-0 pr-3">
+                      <span className={`material-symbols-outlined shrink-0 ${isAlighting ? 'text-primary' : 'text-on-surface-variant'}`} style={{ fontSize: '20px' }}>
+                        {isAlighting ? 'pin_drop' : 'directions_bus'}
+                      </span>
+                      <span className={`text-[0.9375rem] leading-snug ${isAlighting ? 'font-black text-primary' : 'font-bold text-on-surface-variant'}`}>
+                        {step.name}
+                      </span>
+                    </div>
+                    <span className={`text-[0.8125rem] font-bold shrink-0 ${isAlighting ? 'text-primary' : 'text-on-surface-variant/60'}`}>
+                      {distLabel}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Info / alert card */}
         <div className={`rounded-2xl p-5 mb-6 flex items-start gap-3 ${isMissed ? 'bg-error-container/20 border border-error/20' : 'bg-surface-container-low'}`}>
@@ -227,22 +259,14 @@ export default function WatchPage() {
           </a>
         )}
 
-        {/* Action grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { icon: 'call',         label: `Call ${journey.userName ?? 'them'}` },
-            { icon: 'chat_bubble',  label: 'Quick Message' },
-            { icon: 'share',        label: 'Share Tracking' },
-            { icon: 'report',       label: 'Flag Concern' },
-          ].map(({ icon, label }) => (
-            <button
-              key={icon}
-              className="bg-surface-container hover:bg-surface-container-high transition-colors p-4 rounded-2xl flex items-center gap-3 active:scale-95"
-            >
-              <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: '20px' }}>{icon}</span>
-              <span className="text-[0.875rem] font-medium text-on-surface">{label}</span>
-            </button>
-          ))}
+        {/* Action grid (Simplified) */}
+        <div className="grid grid-cols-1 mb-10">
+          <button
+            className="w-full bg-surface-container border border-primary/20 hover:bg-primary/10 transition-colors p-5 rounded-3xl flex items-center justify-center gap-4 active:scale-95 shadow-sm"
+          >
+            <span className="material-symbols-outlined text-primary" style={{ fontSize: '28px', fontVariationSettings: "'FILL' 1" }}>call</span>
+            <span className="text-[1.125rem] font-black tracking-tight text-primary">Call {journey.userName ?? 'Them'}</span>
+          </button>
         </div>
 
       </main>

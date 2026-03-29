@@ -38,6 +38,10 @@ export function JourneyProvider({ children }) {
   const [currentLegIndex, setCurrentLegIndex] = useState(0)
   const [totalLegs, setTotalLegs] = useState(1)
   const [watchToken, setWatchToken] = useState(null)
+  const [atPenultimateStop, setAtPenultimateStop] = useState(false)
+  const [etaMinutes, setEtaMinutes] = useState(null)
+  const [apiDistance, setApiDistance] = useState(null)
+  const [routeSteps, setRouteSteps] = useState([])
 
   const watchIdRef = useRef(null)
   const countdownRef = useRef(null)
@@ -46,7 +50,7 @@ export function JourneyProvider({ children }) {
   const wakeLockRef = useRef(null)
   const minDistRef = useRef(Infinity)
   const stateRef = useRef(JOURNEY_STATE.IDLE)
-  const simDistanceRef = useRef(2000)
+  const simDistanceRef = useRef(3000)
   const simIntervalRef = useRef(null)
   // Phase 1 cooldown: timestamp after which Phase 1 can fire again
   // 0 = always allow, Infinity = never allow again (user said "I am awake")
@@ -111,7 +115,11 @@ export function JourneyProvider({ children }) {
       triggerMissed()
       return
     }
-    if (cur === JOURNEY_STATE.MONITORING && dist <= PHASE_1_METERS) {
+    
+    // Trigger Phase 1 "Are you awake?" EXACTLY at 5 minutes remaining based purely on Google API
+    const phase1Ready = (etaMinutes !== null && etaMinutes <= 5)
+    
+    if (cur === JOURNEY_STATE.MONITORING && phase1Ready) {
       if (Date.now() >= phase1CooldownRef.current) {
         phase1CooldownRef.current = 0
         triggerPhase1()
@@ -119,7 +127,7 @@ export function JourneyProvider({ children }) {
     } else if ((cur === JOURNEY_STATE.MONITORING || cur === JOURNEY_STATE.PHASE_1) && dist <= PHASE_2_METERS) {
       triggerPhase2()
     }
-  }, [position, destination])
+  }, [position, destination, etaMinutes, simMode])
 
   // ── PHASE 2 COUNTDOWN ──────────────────────────────────────────────
   useEffect(() => {
@@ -141,7 +149,7 @@ export function JourneyProvider({ children }) {
   // ── SIMULATION: reset distance only when sim first turns on ────────
   useEffect(() => {
     if (simMode) {
-      simDistanceRef.current = 2000
+      simDistanceRef.current = 3000
       minDistRef.current = Infinity
     } else {
       clearInterval(simIntervalRef.current)
@@ -164,9 +172,15 @@ export function JourneyProvider({ children }) {
 
     clearInterval(simIntervalRef.current)
     simIntervalRef.current = setInterval(() => {
+      // Simulate fast physical movement
       simDistanceRef.current = Math.max(0, simDistanceRef.current - 60)
       const dist = simDistanceRef.current
       setDistanceToStop(dist)
+      
+      // Simulate a ticking Google API ETA: 200m per minute
+      const simulatedEta = Math.ceil(dist / 200)
+      setEtaMinutes(simulatedEta)
+
       if (dist < minDistRef.current) minDistRef.current = dist
 
       const cur = stateRef.current
@@ -174,8 +188,9 @@ export function JourneyProvider({ children }) {
         clearInterval(simIntervalRef.current)
         return
       }
-      // Only try Phase 1 from MONITORING with cooldown check
-      if (cur === JOURNEY_STATE.MONITORING && dist <= PHASE_1_METERS) {
+      
+      // Only try Phase 1 from MONITORING with cooldown check (Strictly > 5 minutes API logic)
+      if (cur === JOURNEY_STATE.MONITORING && simulatedEta <= 5) {
         if (Date.now() >= phase1CooldownRef.current) {
           phase1CooldownRef.current = 0
           triggerPhase1()
@@ -186,7 +201,7 @@ export function JourneyProvider({ children }) {
       ) {
         triggerPhase2()
       }
-    }, 700)
+    }, 500)
 
     return () => clearInterval(simIntervalRef.current)
   }, [simMode, state])
@@ -279,17 +294,61 @@ export function JourneyProvider({ children }) {
     }
   }, [contacts, userName, destination, position, smsSent])
 
+  const sendSafeArrivalSMS = useCallback(async (stopName) => {
+    const primaryContact = contacts[0]
+    if (!primaryContact?.phone) return
+    try {
+      const watchUrl = watchToken ? `${window.location.origin}/watch/${watchToken}` : null
+      await fetch('/api/sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: primaryContact.phone,
+          userName,
+          stopName,
+          type: 'safe',
+          watchUrl,
+        }),
+      })
+    } catch (e) {
+      console.error('Safe SMS error:', e)
+    }
+  }, [contacts, userName, watchToken])
+
+  const sendPushNotify = useCallback(async (type, opts = {}) => {
+    const pushToken = contacts[0]?.pushToken
+    if (!pushToken) return
+    try {
+      const watchUrl = opts.watchUrl ?? (watchToken ? `${window.location.origin}/watch/${watchToken}` : null)
+      await fetch('/api/push/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: pushToken,
+          type,
+          userName,
+          stopName: opts.stopName ?? destination?.name ?? 'their stop',
+          watchUrl,
+        }),
+      })
+    } catch (e) {
+      console.error('Push notify error:', e)
+    }
+  }, [contacts, userName, destination, watchToken])
+
   // ── STATE MACHINE ──────────────────────────────────────────────────
   const triggerPhase1 = useCallback(() => {
     setState(JOURNEY_STATE.PHASE_1)
     navigator.vibrate?.([200, 100, 200, 100, 200])
-  }, [])
+    playAlarm()
+  }, [playAlarm])
 
   const triggerPhase2 = useCallback(() => {
     setState(JOURNEY_STATE.PHASE_2)
-    navigator.vibrate?.([500, 150, 500, 150, 500, 150, 500, 150, 500])
-    playAlarm()
-  }, [playAlarm])
+    // No alarm — Phase 1 (penultimate stop) is the wake-up alarm.
+    // Phase 2 is a silent arrival confirmation.
+    navigator.vibrate?.([100, 50, 100])
+  }, [])
 
   const triggerMissed = useCallback(async () => {
     setState(JOURNEY_STATE.MISSED)
@@ -311,8 +370,9 @@ export function JourneyProvider({ children }) {
       : position
 
     await sendEmergencySMS(currentPos)
+    sendPushNotify('missed', { lat: currentPos?.lat, lng: currentPos?.lng })
     router.push('/missed')
-  }, [stopAlarm, sendEmergencySMS, router, simMode, destination, position])
+  }, [stopAlarm, sendEmergencySMS, sendPushNotify, router, simMode, destination, position])
 
   // ── PUBLIC ACTIONS ─────────────────────────────────────────────────
 
@@ -346,27 +406,44 @@ export function JourneyProvider({ children }) {
     setUserName(savedName)
     setSmsSent(false)
     setEtaMinutes(null)
+    setApiDistance(null)
+    setRouteSteps([])
     lastEtaFetchRef.current = 0
     lastEtaPositionRef.current = null
     minDistRef.current = Infinity
-    simDistanceRef.current = 2000
+    simDistanceRef.current = 3000
     phase1CooldownRef.current = 0
     setState(JOURNEY_STATE.MONITORING)
     acquireWakeLock()
 
-    // Send watch link SMS to primary contact
-    if (savedContacts[0]?.phone && token) {
+    // Send watch link SMS + Telegram to primary contact
+    if (token) {
       const watchUrl = `${window.location.origin}/watch/${token}`
-      fetch('/api/sms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: savedContacts[0].phone,
-          userName: savedName,
-          type: 'watch',
-          watchUrl,
-        }),
-      }).catch(() => {})
+      if (savedContacts[0]?.phone) {
+        fetch('/api/sms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: savedContacts[0].phone,
+            userName: savedName,
+            type: 'watch',
+            watchUrl,
+          }),
+        }).catch(() => {})
+      }
+      if (savedContacts[0]?.pushToken) {
+        fetch('/api/push/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: savedContacts[0].pushToken,
+            type: 'watch',
+            userName: savedName,
+            stopName: dest?.name ?? 'their stop',
+            watchUrl,
+          }),
+        }).catch(() => {})
+      }
     }
 
     router.push('/journey/active')
@@ -377,15 +454,27 @@ export function JourneyProvider({ children }) {
    * @param {boolean} delay - true = "Delay 5 mins", false = "I am awake"
    */
   const dismissWarning = useCallback((delay = false) => {
+    stopAlarm()
+    navigator.vibrate?.(0)
     if (delay) {
-      // Cooldown: Phase 1 can retrigger in 5 minutes
-      phase1CooldownRef.current = Date.now() + 5 * 60 * 1000
+      // Max 1-minute snooze — any longer risks missing the stop
+      phase1CooldownRef.current = Date.now() + 1 * 60 * 1000
     } else {
       // "I am awake": Phase 1 won't retrigger. Only Phase 2 (200m) will.
       phase1CooldownRef.current = Infinity
     }
     setState(JOURNEY_STATE.MONITORING)
-  }, [])
+  }, [stopAlarm])
+
+  // Called by BusRouteTimeline when the stop before the destination becomes active
+  const setPenultimateReached = useCallback(() => {
+    setAtPenultimateStop(true)
+    // Force Phase 1 regardless of ETA (no cooldown bypass — just set it)
+    if (stateRef.current === JOURNEY_STATE.MONITORING) {
+      phase1CooldownRef.current = 0
+      triggerPhase1()
+    }
+  }, [triggerPhase1])
 
   const dismissAlarm = useCallback(() => {
     stopAlarm()
@@ -399,6 +488,7 @@ export function JourneyProvider({ children }) {
     minDistRef.current = Infinity
     phase1CooldownRef.current = 0
     setSimMode(false)
+    setAtPenultimateStop(false)
     router.push('/')
   }, [stopAlarm, router])
 
@@ -415,11 +505,15 @@ export function JourneyProvider({ children }) {
     minDistRef.current = Infinity
     phase1CooldownRef.current = 0
     setSimMode(false)
+    setAtPenultimateStop(false)
     router.push('/')
   }, [stopAlarm, router])
 
   const confirmSafe = useCallback(() => {
     const contactName = contacts[0]?.name ?? null
+    const stopName = destination?.name ?? null
+    sendSafeArrivalSMS(stopName)
+    sendPushNotify('safe', { stopName })
     releaseWakeLock()
     clearInterval(simIntervalRef.current)
     setState(JOURNEY_STATE.IDLE)
@@ -428,9 +522,10 @@ export function JourneyProvider({ children }) {
     setSmsSent(false)
     phase1CooldownRef.current = 0
     setSimMode(false)
+    setAtPenultimateStop(false)
     const qs = contactName ? `?contact=${encodeURIComponent(contactName)}` : ''
     router.push(`/safe${qs}`)
-  }, [router, contacts])
+  }, [router, contacts, destination, sendSafeArrivalSMS, sendPushNotify])
 
   /**
    * Called when the Phase 2 puzzle is solved.
@@ -446,6 +541,9 @@ export function JourneyProvider({ children }) {
       setState(JOURNEY_STATE.TRANSFER)
       router.push('/journey/transfer')
     } else {
+      const stopName = destination?.name ?? null
+      sendSafeArrivalSMS(stopName)
+      sendPushNotify('safe', { stopName })
       releaseWakeLock()
       const contactName = contacts[0]?.name ?? null
       setState(JOURNEY_STATE.IDLE)
@@ -458,7 +556,7 @@ export function JourneyProvider({ children }) {
       const qs = contactName ? `?contact=${encodeURIComponent(contactName)}` : ''
       router.push(`/safe${qs}`)
     }
-  }, [stopAlarm, contacts, router])
+  }, [stopAlarm, contacts, router, destination, sendSafeArrivalSMS, sendPushNotify])
 
   /**
    * Board the next leg of a multi-leg journey.
@@ -473,7 +571,7 @@ export function JourneyProvider({ children }) {
     setCurrentLegIndex(prev => prev + 1)
     setSmsSent(false)
     minDistRef.current = Infinity
-    simDistanceRef.current = 2000
+    simDistanceRef.current = 3000
     phase1CooldownRef.current = 0
     setState(JOURNEY_STATE.MONITORING)
     acquireWakeLock()
@@ -482,11 +580,9 @@ export function JourneyProvider({ children }) {
 
   const toggleSimMode = useCallback(() => setSimMode((prev) => !prev), [])
 
-  const [etaMinutes, setEtaMinutes] = useState(null)
-
   // ── ROUTES API ETA (throttled: every 45s or >30m movement) ──────────
   useEffect(() => {
-    if (!position || !destination?.lat || simMode) return
+    if (!position || !destination?.lat) return
     const now = Date.now()
     const last = lastEtaPositionRef.current
     const movedEnough = !last ||
@@ -508,7 +604,11 @@ export function JourneyProvider({ children }) {
       }),
     })
       .then(r => r.json())
-      .then(data => { if (data.durationMinutes) setEtaMinutes(data.durationMinutes) })
+      .then(data => { 
+        if (data.durationMinutes) setEtaMinutes(data.durationMinutes) 
+        if (data.distanceMeters) setApiDistance(data.distanceMeters)
+        if (data.routeSteps) setRouteSteps(data.routeSteps) 
+      })
       .catch(() => {})
   }, [position, destination, simMode])
 
@@ -520,6 +620,7 @@ export function JourneyProvider({ children }) {
       state,
       destinationName: destination?.name ?? null,
       distanceToStop,
+      apiDistance,
       etaMinutes,
       lat: position?.lat ?? null,
       lng: position?.lng ?? null,
@@ -528,6 +629,8 @@ export function JourneyProvider({ children }) {
       userName,
       currentLegIndex,
       totalLegs,
+      simMode,
+      routeSteps,
     }
     fetch('/api/watch', {
       method: 'POST',
@@ -542,7 +645,9 @@ export function JourneyProvider({ children }) {
       destination,
       position,
       distanceToStop,
+      apiDistance,
       etaMinutes,
+      routeSteps,
       countdown,
       contacts,
       userName,
@@ -559,6 +664,9 @@ export function JourneyProvider({ children }) {
       endJourney,
       confirmSafe,
       toggleSimMode,
+      triggerMissed,
+      atPenultimateStop,
+      setPenultimateReached,
       completeCurrentLeg,
       boardNextLeg,
       setContacts,

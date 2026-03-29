@@ -4,7 +4,6 @@ export default function HomePage() {
   return (
     <div className="bg-surface-container-lowest text-on-surface h-dvh flex flex-col max-w-[430px] mx-auto overflow-hidden">
 
-      {/* Header */}
       <header className="flex justify-between items-center px-8 pt-12 pb-3 flex-shrink-0">
         <span className="text-lg font-black tracking-tighter text-primary">Nudge</span>
         <Link href="/settings">
@@ -16,27 +15,53 @@ export default function HomePage() {
 
         {/* Hero */}
         <section className="pt-2">
-          <h1 className="text-[2.25rem] leading-[1.08] font-black tracking-tighter text-primary mb-2">
+          <h1 className="text-[2.5rem] leading-[1.05] font-black tracking-tighter text-primary mb-3">
             Sleep on your<br />commute.
           </h1>
           <p className="text-[0.9375rem] text-on-surface-variant leading-relaxed">
-            We'll make sure you get off at the right stop.
+            We'll wake you before your stop — and call for help if you miss it.
           </p>
         </section>
 
+        {/* Visual route card */}
+        <div className="rounded-2xl bg-surface-container px-6 py-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-2.5 h-2.5 rounded-full bg-secondary flex-shrink-0" />
+            <span className="text-[0.8125rem] font-bold text-secondary uppercase tracking-widest">Your location</span>
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="flex flex-col items-center flex-shrink-0 mt-1">
+              <div className="w-0.5 h-5 bg-primary/20" />
+              <span className="material-symbols-outlined text-primary" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>directions_bus</span>
+              <div className="w-0.5 h-5 bg-primary/20" />
+            </div>
+            <div className="flex-1 py-1">
+              <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-0.5">Monitoring</p>
+              <p className="text-[0.9375rem] font-bold text-on-surface">You're on the bus</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-0.5">ETA</p>
+              <p className="text-[0.9375rem] font-black text-primary">12 min</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0" />
+            <span className="text-[0.8125rem] font-bold text-primary">1000 17th Ave N</span>
+          </div>
+        </div>
+
         {/* Feature list */}
-        <section className="space-y-3 pb-2">
+        <section className="space-y-2.5">
           {[
-            'Wake you before your stop',
-            'Get you home if you miss it',
-            'Alert someone who cares',
-            'Works offline',
-          ].map((text) => (
+            ['notifications_active', 'Wakes you 5 minutes before your stop'],
+            ['emergency_share',      'Alerts your contact if you miss it'],
+            ['location_on',         'Shares your live location when it matters'],
+          ].map(([icon, text]) => (
             <div key={text} className="flex items-center gap-4">
-              <div className="flex-shrink-0 w-7 h-7 rounded-full bg-secondary-container flex items-center justify-center">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center">
                 <span className="material-symbols-outlined text-on-secondary-container"
-                  style={{ fontSize: '15px', fontVariationSettings: "'wght' 700, 'FILL' 1" }}>
-                  check
+                  style={{ fontSize: '16px', fontVariationSettings: "'wght' 600, 'FILL' 1" }}>
+                  {icon}
                 </span>
               </div>
               <span className="text-[0.9375rem] font-medium text-on-surface">{text}</span>
@@ -44,28 +69,19 @@ export default function HomePage() {
           ))}
         </section>
 
-        {/* Photo */}
-        <div className="overflow-hidden rounded-xl bg-surface-container w-full flex-shrink-0 mb-2" style={{ height: '180px' }}>
-          <img
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBHCQIN3Bt1iuzFl8Tn2hdRmX9LFTErCj7Uxq47aCvsiTSMraOzlhHf1OmN-7OZQVvjb1JVe0fVtjXOgGIeqE5EHta8Dae4T9vWBe6A3XuvoMFOW3BLePSshBVqb4T_eqBFLsfkHBiFm6XbT2quv5OYnh-NuQWuQjeKOq4-T0AHmUv76YYrmlAtuxgyVP9orPwCIvBNTkFrT-amPEeEdWPljKYEXaXaCjGcbsq1tOLDMTAOMWr9VPcHc9CIhc9QSXZQotFcyvANkCfn"
-            alt="Commuter sleeping on train"
-            className="w-full h-full object-cover grayscale opacity-80"
-          />
-        </div>
-
         {/* CTAs */}
         <div className="space-y-3">
           <Link
             href="/journey/setup"
             className="flex items-center justify-center w-full h-[54px] rounded-full bg-primary text-white font-bold text-[1rem] tracking-tight active:scale-[0.97] transition-all duration-150"
           >
-            Get Started
+            Start a journey
           </Link>
           <Link
-            href="/journey/setup?enroute=1"
-            className="block text-center text-[0.75rem] uppercase tracking-widest font-semibold text-on-surface-variant py-1.5"
+            href="/settings"
+            className="block text-center text-[0.8125rem] font-medium text-on-surface-variant py-1.5"
           >
-            Already on a bus? Start monitoring
+            Set up emergency contacts first →
           </Link>
         </div>
 
