@@ -1,6 +1,36 @@
+'use client'
+
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
 
 export default function HomePage() {
+  const [installPrompt, setInstallPrompt] = useState(null)
+  const [isInstalled, setIsInstalled] = useState(false)
+
+  useEffect(() => {
+    // Already installed as PWA
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsInstalled(true)
+      return
+    }
+    const handler = (e) => {
+      e.preventDefault()
+      setInstallPrompt(e)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  const handleInstall = async () => {
+    if (!installPrompt) return
+    installPrompt.prompt()
+    const { outcome } = await installPrompt.userChoice
+    if (outcome === 'accepted') {
+      setInstallPrompt(null)
+      setIsInstalled(true)
+    }
+  }
+
   return (
     <div className="bg-surface-container-lowest text-on-surface h-dvh flex flex-col max-w-[430px] mx-auto overflow-hidden">
 
@@ -53,7 +83,7 @@ export default function HomePage() {
         {/* Feature list */}
         <section className="space-y-2.5">
           {[
-            ['notifications_active', 'Wakes you 5 minutes before your stop'],
+            ['notifications_active', 'Wakes you before your stop'],
             ['emergency_share',      'Alerts your contact if you miss it'],
             ['location_on',         'Shares your live location when it matters'],
           ].map(([icon, text]) => (
@@ -71,6 +101,23 @@ export default function HomePage() {
 
         {/* CTAs */}
         <div className="space-y-3">
+          {/* PWA install prompt — only shown when browser supports it and not yet installed */}
+          {installPrompt && !isInstalled && (
+            <button
+              onClick={handleInstall}
+              className="w-full flex items-center gap-3 px-5 h-[48px] rounded-2xl bg-secondary-container border border-secondary/20 active:scale-[0.97] transition-all"
+            >
+              <span className="material-symbols-outlined text-on-secondary-container flex-shrink-0" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>
+                install_mobile
+              </span>
+              <div className="text-left flex-1">
+                <p className="text-[0.8125rem] font-bold text-on-secondary-container leading-none">Add to Home Screen</p>
+                <p className="text-[0.6875rem] text-on-secondary-container/70 mt-0.5">Works offline · No app store needed</p>
+              </div>
+              <span className="material-symbols-outlined text-on-secondary-container/50" style={{ fontSize: '16px' }}>chevron_right</span>
+            </button>
+          )}
+
           <Link
             href="/journey/setup"
             className="flex items-center justify-center w-full h-[54px] rounded-full bg-primary text-white font-bold text-[1rem] tracking-tight active:scale-[0.97] transition-all duration-150"
