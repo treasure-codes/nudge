@@ -23,6 +23,11 @@ function SetJourneyContent() {
   const [isAddingStop, setIsAddingStop] = useState(true)
   const debounceRef = useRef(null)
 
+  // Route picker state
+  const [routeOptions, setRouteOptions] = useState(null)   // null = not yet fetched
+  const [selectedRoute, setSelectedRoute] = useState(null)
+  const [fetchingRoutes, setFetchingRoutes] = useState(false)
+
   // Debounced autocomplete
   useEffect(() => {
     setResults([])
@@ -55,13 +60,7 @@ function SetJourneyContent() {
         lng: data.place?.lng ?? null,
       }])
     } catch {
-      setLegs(prev => [...prev, {
-        id: p.placeId,
-        name: p.mainText,
-        address: p.description,
-        lat: null,
-        lng: null,
-      }])
+      setLegs(prev => [...prev, { id: p.placeId, name: p.mainText, address: p.description, lat: null, lng: null }])
     }
     setIsAddingStop(false)
     setLoadingPlace(false)
@@ -73,6 +72,8 @@ function SetJourneyContent() {
       if (next.length === 0) setIsAddingStop(true)
       return next
     })
+    setRouteOptions(null)
+    setSelectedRoute(null)
   }
 
   const cancelAdding = () => {
@@ -82,6 +83,41 @@ function SetJourneyContent() {
   }
 
   const canStart = legs.length > 0 && legs.every(l => l.lat) && !loadingPlace && !isAddingStop
+
+  // Tap "Start Journey" → get GPS → fetch route alternatives
+  const handleStartJourney = async () => {
+    if (!canStart) return
+    setFetchingRoutes(true)
+    try {
+      const pos = await new Promise((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(
+          p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+          reject,
+          { timeout: 8000, enableHighAccuracy: false }
+        )
+      )
+      const res = await fetch('/api/transit-routes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ originLat: pos.lat, originLng: pos.lng, destLat: legs[0].lat, destLng: legs[0].lng }),
+      })
+      const data = await res.json()
+      if (data.routes?.length) {
+        setRouteOptions(data.routes)
+      } else {
+        startJourney(legs[0], legs.slice(1))
+      }
+    } catch {
+      // GPS unavailable or no routes — start without route info
+      startJourney(legs[0], legs.slice(1))
+    } finally {
+      setFetchingRoutes(false)
+    }
+  }
+
+  const handleConfirmRoute = () => {
+    startJourney(legs[0], legs.slice(1), selectedRoute?.transitSteps ?? [])
+  }
 
   return (
     <div className="bg-surface-container-lowest text-on-surface min-h-dvh flex flex-col max-w-[430px] mx-auto">
@@ -130,8 +166,6 @@ function SetJourneyContent() {
             const showConnector = !isLastLeg || isAddingStop
             return (
               <div key={`${leg.id}-${i}`} className="flex items-stretch gap-4">
-
-                {/* Rail */}
                 <div className="w-8 flex flex-col items-center flex-shrink-0">
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all ${
                     isLastLeg && !isAddingStop ? 'bg-primary border-primary' : 'bg-white border-primary'
@@ -146,12 +180,8 @@ function SetJourneyContent() {
                       </span>
                     )}
                   </div>
-                  {showConnector && (
-                    <div className="w-0.5 flex-1 min-h-[44px] bg-outline-variant/40" />
-                  )}
+                  {showConnector && <div className="w-0.5 flex-1 min-h-[44px] bg-outline-variant/40" />}
                 </div>
-
-                {/* Stop card */}
                 <div className="flex-1 py-2 pb-3">
                   <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-surface-container border border-outline-variant/20">
                     <div className="flex-1 min-w-0">
@@ -159,19 +189,13 @@ function SetJourneyContent() {
                         {isLastLeg && !isAddingStop ? 'Final stop' : `Transfer stop ${i + 1}`}
                       </p>
                       <p className="font-bold text-on-surface text-[0.9375rem] truncate">{leg.name}</p>
-                      {!leg.lat && (
-                        <p className="text-error text-xs mt-0.5">No coordinates — remove and try again</p>
-                      )}
+                      {!leg.lat && <p className="text-error text-xs mt-0.5">No coordinates — remove and try again</p>}
                     </div>
-                    <button
-                      onClick={() => removeLeg(i)}
-                      className="p-1.5 active:scale-90 flex-shrink-0 hover:bg-surface-container-high rounded-full transition-colors"
-                    >
+                    <button onClick={() => removeLeg(i)} className="p-1.5 active:scale-90 flex-shrink-0 hover:bg-surface-container-high rounded-full transition-colors">
                       <span className="material-symbols-outlined text-on-surface-variant/50" style={{ fontSize: '16px' }}>close</span>
                     </button>
                   </div>
                 </div>
-
               </div>
             )
           })}
@@ -206,7 +230,6 @@ function SetJourneyContent() {
                   )}
                 </div>
 
-                {/* Autocomplete results */}
                 {results.length > 0 && (
                   <div className="mt-2 bg-white rounded-2xl overflow-hidden border border-outline-variant/30 shadow-md relative z-10">
                     {results.map((p, ri) => (
@@ -218,9 +241,7 @@ function SetJourneyContent() {
                         <span className="material-symbols-outlined text-on-surface-variant flex-shrink-0 mt-0.5" style={{ fontSize: '18px' }}>location_on</span>
                         <div className="min-w-0">
                           <p className="font-bold text-on-surface text-[0.9375rem] truncate">{p.mainText}</p>
-                          {p.secondaryText && (
-                            <p className="text-xs text-on-surface-variant mt-0.5 truncate">{p.secondaryText}</p>
-                          )}
+                          {p.secondaryText && <p className="text-xs text-on-surface-variant mt-0.5 truncate">{p.secondaryText}</p>}
                         </div>
                       </button>
                     ))}
@@ -236,7 +257,7 @@ function SetJourneyContent() {
             </div>
           )}
 
-          {/* Add another stop button */}
+          {/* Add another stop */}
           {legs.length > 0 && !isAddingStop && (
             <div className="flex items-center gap-4 mt-1">
               <div className="w-8 flex justify-center flex-shrink-0">
@@ -275,17 +296,130 @@ function SetJourneyContent() {
           </p>
         )}
         <button
-          onClick={() => canStart && startJourney(legs[0], legs.slice(1))}
-          disabled={!canStart}
+          onClick={handleStartJourney}
+          disabled={!canStart || fetchingRoutes}
           className="w-full h-[56px] rounded-full bg-primary text-white font-bold text-[1.0625rem] tracking-tight active:scale-[0.97] transition-all disabled:opacity-25 shadow-[0_8px_32px_rgba(0,0,0,0.1)]"
         >
-          {loadingPlace
+          {fetchingRoutes
+            ? 'Finding routes…'
+            : loadingPlace
             ? 'Getting location…'
             : legs.length > 1
             ? `Start ${legs.length}-stop Journey`
             : 'Start Journey'}
         </button>
       </div>
+
+      {/* Route picker bottom sheet */}
+      {routeOptions !== null && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end max-w-[430px] mx-auto">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setRouteOptions(null)} />
+
+          {/* Sheet */}
+          <div className="relative bg-white rounded-t-3xl px-6 pt-5 pb-10 shadow-2xl max-h-[85dvh] overflow-y-auto">
+            {/* Handle */}
+            <div className="w-10 h-1 rounded-full bg-outline-variant/50 mx-auto mb-5" />
+
+            <h2 className="text-[1.375rem] font-black tracking-tighter text-primary mb-1">
+              Choose your route
+            </h2>
+            <p className="text-[0.8125rem] text-on-surface-variant mb-6">
+              Select which bus or train you're boarding to {legs[0]?.name}.
+            </p>
+
+            <div className="space-y-3 mb-6">
+              {routeOptions.map(route => (
+                <button
+                  key={route.id}
+                  onClick={() => setSelectedRoute(route)}
+                  className={`w-full text-left rounded-2xl border-2 transition-all active:scale-[0.98] overflow-hidden ${
+                    selectedRoute?.id === route.id
+                      ? 'border-primary bg-primary/5'
+                      : 'border-outline-variant/30 bg-surface-container'
+                  }`}
+                >
+                  {/* Route header */}
+                  <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+                    {/* Line badge */}
+                    <div className="w-11 h-11 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-black text-[0.9375rem] leading-none">
+                        {route.primaryLine || '?'}
+                      </span>
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-on-surface text-[0.9375rem] truncate">
+                        {route.primaryHeadsign || `Route ${route.primaryLine}`}
+                      </p>
+                      <p className="text-xs text-on-surface-variant mt-0.5">
+                        {route.transfers === 0 ? 'Direct' : `${route.transfers} transfer${route.transfers > 1 ? 's' : ''}`}
+                        {route.numStops > 0 && ` · ${route.numStops} stops`}
+                      </p>
+                    </div>
+
+                    {/* Duration */}
+                    <div className="text-right flex-shrink-0">
+                      <p className="font-black text-on-surface text-[1rem]">{route.duration}</p>
+                      {route.arrivalTimeText && (
+                        <p className="text-xs text-on-surface-variant">arr. {route.arrivalTimeText}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Departure info */}
+                  {(route.departureTimeText || route.departureStop) && (
+                    <div className="flex items-center gap-2 px-4 pb-3 border-t border-outline-variant/20 pt-2.5">
+                      <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: '14px' }}>schedule</span>
+                      <p className="text-xs text-on-surface-variant">
+                        {route.departureTimeText && `Departs ${route.departureTimeText}`}
+                        {route.departureTimeText && route.departureStop && ' · '}
+                        {route.departureStop && `from ${route.departureStop}`}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Transfer legs */}
+                  {route.transitSteps.length > 1 && (
+                    <div className="px-4 pb-3 border-t border-outline-variant/20 pt-2.5 flex flex-wrap gap-1.5">
+                      {route.transitSteps.map((step, si) => (
+                        <span key={si} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-high text-xs font-bold text-on-surface">
+                          <span className="material-symbols-outlined" style={{ fontSize: '11px' }}>
+                            {step.vehicle === 'HEAVY_RAIL' || step.vehicle === 'COMMUTER_TRAIN' ? 'train' : 'directions_bus'}
+                          </span>
+                          {step.line}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Selected check */}
+                  {selectedRoute?.id === route.id && (
+                    <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                      <span className="material-symbols-outlined text-white" style={{ fontSize: '13px', fontVariationSettings: "'FILL' 1" }}>check</span>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Sheet CTA */}
+            <button
+              onClick={handleConfirmRoute}
+              disabled={!selectedRoute}
+              className="w-full h-[52px] rounded-full bg-primary text-white font-bold text-[1rem] tracking-tight active:scale-[0.97] transition-all disabled:opacity-30 mb-3"
+            >
+              {selectedRoute ? `Board ${selectedRoute.primaryLine} → Start` : 'Select a route above'}
+            </button>
+            <button
+              onClick={() => startJourney(legs[0], legs.slice(1))}
+              className="w-full text-center text-[0.8125rem] text-on-surface-variant font-medium py-2"
+            >
+              Skip — start without route info
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   )

@@ -381,7 +381,7 @@ export function JourneyProvider({ children }) {
    * @param {object} dest - destination object
    * @param {object[]} extraLegs - additional legs after the first
    */
-  const startJourney = useCallback((dest, extraLegs = []) => {
+  const startJourney = useCallback((dest, extraLegs = [], initialRouteSteps = []) => {
     const savedContacts = (() => {
       try { return JSON.parse(localStorage.getItem('nudge_contacts') || '[]') } catch { return [] }
     })()
@@ -407,7 +407,7 @@ export function JourneyProvider({ children }) {
     setSmsSent(false)
     setEtaMinutes(null)
     setApiDistance(null)
-    setRouteSteps([])
+    setRouteSteps(initialRouteSteps)
     lastEtaFetchRef.current = 0
     lastEtaPositionRef.current = null
     minDistRef.current = Infinity
