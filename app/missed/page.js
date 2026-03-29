@@ -25,9 +25,26 @@ function loadCachedReroute() {
   } catch { return [] }
 }
 
+const DEMO_MISSED = {
+  destination: { name: 'Downtown Nashville', lat: 36.1627, lng: -86.7816 },
+  lat: 36.1670, lng: -86.7760,
+  contact: { name: 'Treasure' },
+  reroute: [{ routeName: '56', boardStopName: '17th Ave N', walkMeters: 85, departureTimeText: '10:52 PM', nextDepartureMinutes: 8 }],
+  spots: [
+    { name: 'Mapco', type: 'gas_station',       distanceM: 95,  address: '1701 Charlotte Ave' },
+    { name: 'Walgreens', type: 'pharmacy',       distanceM: 210, address: '1900 Charlotte Ave' },
+  ],
+}
+
 export default function MissedPage() {
   const router = useRouter()
   const { state, destination, pendingLegs, position, contacts, confirmSafe, smsSent } = useJourney()
+
+  const [demo] = useState(() =>
+    typeof window !== 'undefined'
+      ? (new URLSearchParams(window.location.search).get('demo') ?? '')
+      : ''
+  )
 
   const [broadcastCountdown, setBroadcastCountdown] = useState(900)
   const [safeSpots, setSafeSpots] = useState([])
@@ -88,13 +105,16 @@ export default function MissedPage() {
     }
   }, [state, position, destination])
 
-  if (state !== JOURNEY_STATE.MISSED) return null
+  if (state !== JOURNEY_STATE.MISSED && !demo) return null
 
-  const primaryContact = contacts[0]
-  const lat = position?.lat ?? destination?.lat
-  const lng = position?.lng ?? destination?.lng
-  const minsLeft = Math.ceil(broadcastCountdown / 60)
-  const bestRoute = rerouteOptions[0] ?? null
+  const primaryContact = demo ? DEMO_MISSED.contact : contacts[0]
+  const lat  = demo ? DEMO_MISSED.lat : (position?.lat ?? destination?.lat)
+  const lng  = demo ? DEMO_MISSED.lng : (position?.lng ?? destination?.lng)
+  const minsLeft = demo ? 13 : Math.ceil(broadcastCountdown / 60)
+  const effectiveDest = demo ? DEMO_MISSED.destination : destination
+  const effectiveReroute = demo ? DEMO_MISSED.reroute : rerouteOptions
+  const effectiveSpots   = demo ? DEMO_MISSED.spots   : []
+  const bestRoute = (demo ? DEMO_MISSED.reroute : rerouteOptions)[0] ?? null
 
   // Prioritise safe, lit, public spaces. Restaurants only fill daytime gaps.
   const filteredSpots = useMemo(() => {
@@ -125,7 +145,7 @@ export default function MissedPage() {
 
         {/* ── Hero ── */}
         <section>
-          {smsSent && primaryContact ? (
+          {(demo || smsSent) && primaryContact ? (
             <div className="flex items-center gap-2.5 mb-4">
               <div className="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center flex-shrink-0">
                 <span className="material-symbols-outlined text-secondary" style={{ fontSize: '16px', fontVariationSettings: "'FILL' 1" }}>
@@ -150,7 +170,7 @@ export default function MissedPage() {
           </h1>
           <p className="text-[0.9375rem] text-on-surface-variant font-medium">
             Let's get you back to{' '}
-            <span className="text-on-surface font-bold">{destination?.name}</span>
+            <span className="text-on-surface font-bold">{effectiveDest?.name}</span>
           </p>
         </section>
 
@@ -158,7 +178,7 @@ export default function MissedPage() {
         {lat && lng && (
           <div className="w-full rounded-2xl overflow-hidden relative flex-shrink-0 border border-outline-variant/20" style={{ height: '200px' }}>
             <img
-              src={`https://maps.googleapis.com/maps/api/staticmap?size=800x400&scale=2&zoom=15&markers=color:0xF59E0B|size:mid|${lat},${lng}${destination?.lat ? `&markers=color:0x006e28|size:mid|label:D|${destination.lat},${destination.lng}` : ''}&style=feature:all|element:geometry|color:0xf5f5f5&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`}
+              src={`https://maps.googleapis.com/maps/api/staticmap?size=800x400&scale=2&zoom=15&markers=color:0xF59E0B|size:mid|${lat},${lng}${effectiveDest?.lat ? `&markers=color:0x006e28|size:mid|label:D|${effectiveDest.lat},${effectiveDest.lng}` : ''}&style=feature:all|element:geometry|color:0xf5f5f5&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`}
               alt="Your current location"
               className="w-full h-full object-cover"
             />
@@ -189,13 +209,13 @@ export default function MissedPage() {
         )}
 
         {/* ── Get back section ── */}
-        {destination && (
+        {effectiveDest && (
           <section>
             <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-3">
-              Get back to {destination.name}
+              Get back to {effectiveDest.name}
             </p>
 
-            {rerouteLoading && (
+            {!demo && rerouteLoading && (
               <div className="flex items-center gap-3 px-4 py-4 rounded-2xl bg-surface-container mb-2.5">
                 <div className="w-4 h-4 rounded-full border-2 border-outline-variant border-t-primary animate-spin flex-shrink-0" />
                 <p className="text-[0.875rem] text-on-surface-variant font-medium">Finding routes…</p>
@@ -265,22 +285,22 @@ export default function MissedPage() {
         )}
 
         {/* ── Safe places to wait ── */}
-        {(spotsLoading || filteredSpots.length > 0) && (
+        {((!demo && spotsLoading) || (demo ? effectiveSpots : filteredSpots).length > 0) && (
           <section>
             <p className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant mb-3">
               {isNightTime() ? 'Safe lit places to wait' : 'Places nearby to wait'}
             </p>
 
-            {spotsLoading && (
+            {!demo && spotsLoading && (
               <div className="flex items-center gap-3 text-on-surface-variant text-[0.875rem]">
                 <div className="w-4 h-4 rounded-full border-2 border-outline-variant border-t-primary animate-spin flex-shrink-0" />
                 Finding open places…
               </div>
             )}
 
-            {!spotsLoading && filteredSpots.length > 0 && (
+            {(demo ? effectiveSpots : filteredSpots).length > 0 && (
               <div className="flex gap-3 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide">
-                {filteredSpots.map((place, i) => {
+                {(demo ? effectiveSpots : filteredSpots).map((place, i) => {
                   const icon = PLACE_ICON[place.type] ?? PLACE_ICON.default
                   const distLabel = place.distanceM >= 1000
                     ? `${(place.distanceM / 1000).toFixed(1)} km`

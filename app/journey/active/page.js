@@ -5,8 +5,67 @@ import { useRouter } from 'next/navigation'
 import { useJourney, JOURNEY_STATE } from '@/context/JourneyContext'
 import { haversine } from '@/lib/haversine'
 
+// ─── DEMO MODE (presentation sim only) ───────────────────────────────────────
+const DEMO_DEST = { name: 'Downtown Nashville', lat: 36.1627, lng: -86.7816 }
+const DEMO_STEPS = [
+  { id: 's1', name: 'Charlotte Ave & 17th Ave N', lat: 36.1553, lng: -86.7877, type: 'boarding' },
+  { id: 's2', name: 'Charlotte Ave & 12th Ave N', lat: 36.1572, lng: -86.7832, type: 'intermediate' },
+  { id: 's3', name: 'Charlotte Ave & 9th Ave N',  lat: 36.1591, lng: -86.7798, type: 'intermediate' },
+  { id: 's4', name: 'Church St & 4th Ave N',      lat: 36.1612, lng: -86.7761, type: 'intermediate' },
+  { id: 's5', name: 'Downtown Nashville',          lat: 36.1627, lng: -86.7816, type: 'alighting' },
+]
+const DEMO_CONTACTS = [{ name: 'Treasure', phone: '+16155550001', pushToken: null }]
+
+function DemoMonitoring() {
+  const [dist, setDist] = useState(2800)
+  useEffect(() => {
+    const t = setInterval(() => setDist(d => Math.max(0, d - 60)), 500)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <MonitoringScreen
+      destination={DEMO_DEST}
+      position={null}
+      distanceToStop={dist}
+      apiDistance={dist}
+      etaMinutes={Math.max(0, Math.ceil(dist / 200))}
+      routeSteps={DEMO_STEPS}
+      pendingLegs={[]}
+      simMode={true}
+      endJourney={() => {}}
+      toggleSimMode={() => {}}
+      currentLegIndex={0}
+      totalLegs={1}
+      watchToken={null}
+      contacts={DEMO_CONTACTS}
+      onPenultimateStop={() => {}}
+    />
+  )
+}
+
+function DemoPhase1() {
+  return (
+    <Phase1Screen
+      destination={DEMO_DEST}
+      etaMinutes={2}
+      dismissWarning={() => {}}
+      atPenultimateStop={true}
+      simMode={false}
+      triggerMissed={() => {}}
+      isTransfer={false}
+    />
+  )
+}
+
 export default function JourneyActivePage() {
   const router = useRouter()
+  // Sync read — avoids flash-redirect to /journey/setup before demo param is known
+  const [demo] = useState(() =>
+    typeof window !== 'undefined'
+      ? (new URLSearchParams(window.location.search).get('demo') ?? '')
+      : ''
+  )
+
   const {
     state, destination, position, distanceToStop, apiDistance, etaMinutes,
     routeSteps, simMode, endJourney, dismissWarning, toggleSimMode,
@@ -15,10 +74,15 @@ export default function JourneyActivePage() {
   } = useJourney()
 
   useEffect(() => {
+    if (demo) return
     if (state === JOURNEY_STATE.IDLE) router.replace('/journey/setup')
     if (state === JOURNEY_STATE.MISSED) router.replace('/missed')
     if (state === JOURNEY_STATE.TRANSFER) router.replace('/journey/transfer')
-  }, [state, router])
+  }, [state, router, demo])
+
+  if (demo === 'monitoring') return <DemoMonitoring />
+  if (demo === 'phase1')    return <DemoPhase1 />
+  if (demo === 'arrived')   return <ArrivedScreen destination={DEMO_DEST} />
 
   if (
     state === JOURNEY_STATE.IDLE ||
@@ -219,11 +283,11 @@ function HeroSection({
 
     if (!total) return 0
 
-    // Sim mode: no live GPS — estimate progress proportionally by distance
+    // Sim mode: count only current-leg stops so "1 stop till transfer" fires correctly
     if (simMode && distanceToStop != null) {
       const SIM_START = 3000
       const fraction = Math.min(1, distanceToStop / SIM_START)
-      return Math.max(0, Math.round(total * fraction))
+      return Math.max(0, Math.round(steps.length * fraction))
     }
 
     // Real GPS: count stops that are still ahead (closer to destination than user is)
@@ -388,21 +452,23 @@ function JourneyRail({
     setActiveStopId(allFlatStops[newIdx]?.id ?? null)
   }, [distanceToStop, simMode, allFlatStops])
 
-  // Penultimate detection
+  // Penultimate detection (real GPS only — sim mode triggers via JourneyContext tick)
   const penultimateCalledRef = useRef(false)
   useEffect(() => {
     if (penultimateCalledRef.current) return
-    const majorStops = allFlatStops.filter(s =>
-      s.type === 'transfer' || s.type === 'alighting'
+    if (simMode) return
+    // Find the stop immediately before the end of the current leg
+    const legEndIdx = allFlatStops.findIndex(s =>
+      (s.type === 'transfer' || s.type === 'alighting') && !s.isFuture
     )
-    if (majorStops.length < 1) return
-    const penultimate = majorStops[majorStops.length - 2]
+    if (legEndIdx <= 0) return
+    const penultimate = allFlatStops[legEndIdx - 1]
     const activeStop = allFlatStops[activeIdxRef.current]
     if (penultimate && activeStop?.id === penultimate.id) {
       penultimateCalledRef.current = true
       onPenultimateStop?.()
     }
-  }, [activeStopId, allFlatStops, onPenultimateStop])
+  }, [activeStopId, allFlatStops, onPenultimateStop, simMode])
 
   // Which groups are expanded — all can be open simultaneously
   const [expandedGroups, setExpandedGroups] = useState({})

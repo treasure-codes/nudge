@@ -194,15 +194,27 @@ export function JourneyProvider({ children }) {
 
       if (dist < minDistRef.current) minDistRef.current = dist
 
-      // ETA-based Phase 1 fallback — only when no GTFS stops loaded
       const hasStops = routeStepsRef.current.length >= 2
-      if (!hasStops && cur === JOURNEY_STATE.MONITORING && simulatedEta <= 5) {
-        if (Date.now() >= phase1CooldownRef.current) {
-          phase1CooldownRef.current = 0
-          triggerPhase1()
+      if (cur === JOURNEY_STATE.MONITORING) {
+        if (!hasStops && simulatedEta <= 5) {
+          // ETA-based Phase 1 fallback — only when no GTFS stops loaded
+          if (Date.now() >= phase1CooldownRef.current) {
+            phase1CooldownRef.current = 0
+            triggerPhase1()
+          }
+        } else if (hasStops) {
+          // Stop-count based Phase 1 — fire when 1 stop remains in current leg
+          const stopsInLeg = routeStepsRef.current.length
+          const stopsLeft = Math.round(stopsInLeg * (dist / 3000))
+          if (stopsLeft <= 1 && dist > 0 && Date.now() >= phase1CooldownRef.current) {
+            phase1CooldownRef.current = 0
+            triggerPhase1()
+          } else if (dist <= PHASE_2_METERS) {
+            triggerPhase2()
+          }
+        } else if (dist <= PHASE_2_METERS) {
+          triggerPhase2()
         }
-      } else if (cur === JOURNEY_STATE.MONITORING && dist <= PHASE_2_METERS) {
-        triggerPhase2()
       }
     }, 500)
 
