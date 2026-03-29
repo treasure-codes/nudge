@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { getStopsBetween } from '@/lib/wegoGtfs'
 
 const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
 
@@ -9,6 +10,7 @@ export async function POST(req) {
     const { originLat, originLng, destLat, destLng } = await req.json()
     const departureTime = Math.floor(Date.now() / 1000)
 
+    // ── Fetch Directions API ───────────────────────────────────────────────
     const fetchDirections = async (transitMode) => {
       const params = new URLSearchParams({
         origin: `${originLat},${originLng}`,
@@ -24,13 +26,12 @@ export async function POST(req) {
       return data.routes || []
     }
 
-    // Two parallel calls: bus-preferred + unrestricted (catches rail/light rail alternatives)
     const [busRoutes, allRoutes] = await Promise.all([
       fetchDirections('bus'),
       fetchDirections(null),
     ])
 
-    // Merge, deduplicate by route summary or primary line+headsign
+    // ── Deduplicate by transit line fingerprint ────────────────────────────
     const seen = new Set()
     const merged = [...busRoutes, ...allRoutes].filter(r => {
       const leg = r.legs?.[0]
@@ -43,53 +44,103 @@ export async function POST(req) {
       return true
     })
 
-    const routes = merged.slice(0, 5).map((r, i) => {
-      const leg = r.legs?.[0]
-      if (!leg) return null
+    // ── Build route objects in parallel (GTFS enrichment per leg) ─────────
+    const routes = await Promise.all(
+      merged.slice(0, 5).map((r, i) => buildRoute(r, i))
+    )
 
-      // Only keep transit legs (no walking)
-      const transitSteps = (leg.steps || [])
-        .filter(step => step.travel_mode === 'TRANSIT')
-        .map(step => {
-          const td = step.transit_details
-          return {
-            type: 'TRANSIT',
-            line: td?.line?.short_name || td?.line?.name || '?',
-            lineName: td?.line?.name || '',
-            headsign: td?.headsign || '',
-            vehicle: td?.line?.vehicle?.type || 'BUS',
-            departureStop: td?.departure_stop?.name || '',
-            arrivalStop: td?.arrival_stop?.name || '',
-            departureTime: td?.departure_time?.text || '',
-            arrivalTime: td?.arrival_time?.text || '',
-            numStops: td?.num_stops || 0,
-          }
-        })
+    return NextResponse.json({ routes: routes.filter(Boolean) })
 
-      const primary = transitSteps[0]
-
-      return {
-        id: i,
-        duration: leg.duration?.text || '',
-        durationSeconds: leg.duration?.value || 0,
-        departureTime: leg.departure_time?.text || '',
-        arrivalTime: leg.arrival_time?.text || '',
-        transfers: Math.max(0, transitSteps.length - 1),
-        lines: transitSteps.map(s => s.line),
-        primaryLine: primary?.line || '',
-        primaryHeadsign: primary?.headsign || '',
-        primaryVehicle: primary?.vehicle || 'BUS',
-        departureStop: primary?.departureStop || '',
-        departureTimeText: primary?.departureTime || '',
-        arrivalTimeText: primary?.arrivalTime || '',
-        numStops: primary?.numStops || 0,
-        transitSteps,
-      }
-    }).filter(Boolean)
-
-    return NextResponse.json({ routes })
   } catch (e) {
     console.error('Transit routes error:', e)
     return NextResponse.json({ error: e.message, routes: [] }, { status: 500 })
   }
+}
+
+// ── Route builder ────────────────────────────────────────────────────────────
+
+async function buildRoute(r, i) {
+  const leg = r.legs?.[0]
+  if (!leg) return null
+
+  const hasTransit = (leg.steps || []).some(s => s.travel_mode === 'TRANSIT')
+  if (!hasTransit) return null
+
+  // Parse each transit step and enrich with its GTFS stop sequence
+  const transitSteps = await Promise.all(
+    (leg.steps || [])
+      .filter(step => step.travel_mode === 'TRANSIT')
+      .map(step => buildTransitStep(step))
+  )
+
+  const primary = transitSteps[0]
+  if (!primary || primary.line === '?') return null
+
+  return {
+    id: i,
+    duration: leg.duration?.text || '',
+    durationSeconds: leg.duration?.value || 0,
+    departureTime: leg.departure_time?.text || '',
+    arrivalTime: leg.arrival_time?.text || '',
+    transfers: Math.max(0, transitSteps.length - 1),
+    lines: transitSteps.map(s => s.line),
+    primaryLine: primary.line || '',
+    primaryHeadsign: primary.headsign || '',
+    primaryVehicle: primary.vehicle || 'BUS',
+    departureStop: primary.departureStop || '',
+    departureTimeText: primary.departureTime || '',
+    arrivalTimeText: primary.arrivalTime || '',
+    numStops: primary.numStops || 0,
+    transitSteps,
+  }
+}
+
+// ── Transit step builder + GTFS enrichment ────────────────────────────────────
+
+/**
+ * Builds a transit step object and attempts to enrich it with the full GTFS
+ * stop sequence between boarding and alighting stops.
+ * stopSequence is what enables offline GPS tracking after the user boards.
+ */
+async function buildTransitStep(step) {
+  const td = step.transit_details
+
+  const base = {
+    type: 'TRANSIT',
+    line: td?.line?.short_name || td?.line?.name || '?',
+    lineName: td?.line?.name || '',
+    headsign: td?.headsign || '',
+    vehicle: td?.line?.vehicle?.type || 'BUS',
+    departureStop: td?.departure_stop?.name || '',
+    departureLocation: td?.departure_stop?.location || null,
+    arrivalStop: td?.arrival_stop?.name || '',
+    arrivalLocation: td?.arrival_stop?.location || null,
+    departureTime: td?.departure_time?.text || '',
+    arrivalTime: td?.arrival_time?.text || '',
+    numStops: td?.num_stops || 0,
+    polyline: step.polyline?.points || '',
+    // Full ordered stop sequence from GTFS — empty if GTFS lookup fails
+    stopSequence: [],
+  }
+
+  const boardLoc = td?.departure_stop?.location
+  const alightLoc = td?.arrival_stop?.location
+
+  if (boardLoc && alightLoc) {
+    try {
+      const stops = await getStopsBetween(
+        boardLoc.lat, boardLoc.lng,
+        alightLoc.lat, alightLoc.lng,
+        base.line
+      )
+      if (stops.length >= 2) {
+        base.stopSequence = stops  // [{ id, name, lat, lng, type }]
+      }
+    } catch (err) {
+      // GTFS unavailable — offline tracking falls back to destination Haversine
+      console.warn('[transit-routes] GTFS enrichment failed:', err.message)
+    }
+  }
+
+  return base
 }
