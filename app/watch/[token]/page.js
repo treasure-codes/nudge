@@ -89,10 +89,6 @@ export default function WatchPage() {
       <header className="sticky top-0 w-full z-50 bg-surface-container-lowest/95 backdrop-blur-sm">
         <div className="flex justify-between items-center px-8 py-5">
           <span className="text-xl font-black tracking-tighter text-primary">Nudge</span>
-          <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
-            <span className="text-[0.625rem] font-bold uppercase tracking-widest text-secondary">Watching</span>
-          </div>
         </div>
       </header>
 

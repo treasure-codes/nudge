@@ -114,12 +114,6 @@ function MonitoringScreen({
               Sim
             </button>
           )}
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
-            <span className="text-[0.625rem] font-bold uppercase tracking-widest text-secondary">
-              Live
-            </span>
-          </div>
         </div>
       </header>
 
@@ -248,13 +242,16 @@ function HeroSection({
     return total
   }, [routeSteps, pendingLegs, position, distanceToStop, simMode])
 
+  const isTransferLeg = totalLegs > 1 && currentLegIndex < totalLegs - 1
+  const stopTarget = isTransferLeg ? 'transfer' : 'destination'
+
   const stopsLabel = distanceToStop != null && distanceToStop <= 600
     ? 'Arriving now'
     : stopsRemaining === 0
       ? 'En route'
       : stopsRemaining === 1
-        ? '1 stop away'
-        : `${stopsRemaining} stops away`
+        ? `1 stop till ${stopTarget}`
+        : `${stopsRemaining} stops till ${stopTarget}`
 
   const etaLabel = etaMinutes != null && etaMinutes > 0
     ? `~${etaMinutes} min`
@@ -785,12 +782,7 @@ function Phase1Screen({ destination, etaMinutes, dismissWarning, atPenultimateSt
 function ArrivedScreen({ destination }) {
   return (
     <div className="bg-surface-container-lowest text-on-surface min-h-dvh flex flex-col max-w-[430px] mx-auto">
-      <header className="bg-surface-container-lowest/95 backdrop-blur-sm w-full flex justify-end items-center px-6 py-7">
-        <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
-          <span className="text-[0.625rem] font-bold uppercase tracking-widest text-secondary">Live</span>
-        </div>
-      </header>
+      <div className="pt-14" />
 
       <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
         <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center mx-auto mb-8">
