@@ -39,7 +39,7 @@ function SafeContent() {
           href="/journey/setup"
           className="flex items-center justify-center w-full h-[56px] rounded-full bg-primary text-white font-bold text-[1.0625rem] tracking-tight active:scale-[0.97] transition-all"
         >
-          Start a journey
+          Start a trip
         </Link>
         <Link
           href="/"

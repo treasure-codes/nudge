@@ -6,10 +6,20 @@ import { useJourney, JOURNEY_STATE } from '@/context/JourneyContext'
 
 const TRANSFER_SECS = 10 * 60
 
+const PLACE_ICON = {
+  restaurant:        'restaurant',
+  pharmacy:          'local_pharmacy',
+  convenience_store: 'local_convenience_store',
+  gas_station:       'local_gas_station',
+  default:           'storefront',
+}
+
 export default function TransferPage() {
   const router = useRouter()
-  const { state, destination, pendingLegs, currentLegIndex, totalLegs, boardNextLeg, endJourney } = useJourney()
+  const { state, destination, position, pendingLegs, currentLegIndex, totalLegs, boardNextLeg, endJourney } = useJourney()
   const [timeLeft, setTimeLeft] = useState(TRANSFER_SECS)
+  const [nearbyPlaces, setNearbyPlaces] = useState([])
+  const [placesLoading, setPlacesLoading] = useState(false)
 
   useEffect(() => {
     if (state === JOURNEY_STATE.IDLE) router.replace('/')
@@ -23,6 +33,19 @@ export default function TransferPage() {
     const t = setInterval(() => setTimeLeft(p => Math.max(0, p - 1)), 1000)
     return () => clearInterval(t)
   }, [state])
+
+  useEffect(() => {
+    if (state !== JOURNEY_STATE.TRANSFER) return
+    const lat = position?.lat ?? (destination?.lat ? destination.lat + 0.005 : null)
+    const lng = position?.lng ?? (destination?.lng ? destination.lng + 0.003 : null)
+    if (!lat || !lng) return
+    setPlacesLoading(true)
+    fetch(`/api/places/nearby?lat=${lat}&lng=${lng}`)
+      .then(r => r.json())
+      .then(d => setNearbyPlaces(d.places ?? []))
+      .catch(() => {})
+      .finally(() => setPlacesLoading(false))
+  }, [state, position, destination])
 
   if (state !== JOURNEY_STATE.TRANSFER) return null
 
@@ -39,7 +62,6 @@ export default function TransferPage() {
         <button onClick={endJourney} className="p-2 -ml-2 active:scale-90 transition-transform hover:bg-surface-container rounded-full">
           <span className="material-symbols-outlined text-primary" style={{ fontSize: '22px' }}>close</span>
         </button>
-        <h1 className="font-black uppercase tracking-widest text-sm text-primary">NUDGE</h1>
         <div className="w-10" />
       </header>
 
@@ -89,6 +111,50 @@ export default function TransferPage() {
           </div>
         )}
 
+        {/* Nearby places — only shown when > 2 min left */}
+        {timeLeft > 120 && (placesLoading || nearbyPlaces.length > 0) && (
+          <div className="mb-6">
+            <p className="text-[0.75rem] font-bold uppercase tracking-widest text-on-surface-variant mb-3">
+              Places nearby
+            </p>
+
+            {placesLoading && (
+              <div className="flex items-center gap-3 text-on-surface-variant text-[0.875rem]">
+                <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin flex-shrink-0" />
+                Finding open places…
+              </div>
+            )}
+
+            {!placesLoading && nearbyPlaces.length > 0 && (
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-8 px-8 scrollbar-hide">
+                {nearbyPlaces.map((place, i) => {
+                  const icon = PLACE_ICON[place.type] ?? PLACE_ICON.default
+                  const distLabel = place.distanceM >= 1000
+                    ? `${(place.distanceM / 1000).toFixed(1)} km`
+                    : `${place.distanceM} m`
+                  return (
+                    <a
+                      key={i}
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}&travelmode=walking`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 w-40 bg-surface-container rounded-2xl p-4 active:bg-surface-container-high transition-colors"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-secondary-container flex items-center justify-center mb-3">
+                        <span className="material-symbols-outlined text-on-secondary-container" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>
+                          {icon}
+                        </span>
+                      </div>
+                      <p className="font-bold text-on-surface text-[0.875rem] leading-tight line-clamp-2 mb-1">{place.name}</p>
+                      <p className="text-[0.75rem] font-bold text-secondary">{distLabel} walk</p>
+                    </a>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Watcher notice */}
         <div className="bg-surface-container-low rounded-2xl p-5 flex items-start gap-4">
           <span className="material-symbols-outlined text-secondary mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>verified_user</span>
@@ -100,7 +166,7 @@ export default function TransferPage() {
       </main>
 
       {/* Fixed bottom */}
-      <div className="fixed bottom-0 left-0 w-full max-w-[430px] left-1/2 -translate-x-1/2 px-8 pb-12 pt-4 bg-surface-container-lowest/95 backdrop-blur-sm space-y-3 border-t border-outline-variant/20">
+      <div className="fixed bottom-0 left-0 w-full max-w-[430px] left-1/2 -translate-x-1/2 px-8 pb-20 pt-5 bg-surface-container-lowest/95 backdrop-blur-sm space-y-3 border-t border-outline-variant/20">
         <button
           onClick={boardNextLeg}
           className="w-full h-[56px] rounded-full bg-primary text-white font-bold text-[1.0625rem] active:scale-[0.97] transition-all shadow-[0_8px_32px_rgba(0,0,0,0.1)]"

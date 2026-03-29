@@ -6,20 +6,30 @@ import { useState, useEffect } from 'react'
 export default function HomePage() {
   const [installPrompt, setInstallPrompt] = useState(null)
   const [isInstalled, setIsInstalled] = useState(false)
+  const [showIosHint, setShowIosHint] = useState(false)
 
   useEffect(() => {
-    // Already installed as PWA
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+    if (isStandalone) { setIsInstalled(true); return }
+
+    // iOS Safari — no beforeinstallprompt, show manual hint instead
+    const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream
+    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent)
+    const dismissed = localStorage.getItem('nudge_ios_hint_dismissed')
+    if (isIos && isSafari && !dismissed) {
+      setShowIosHint(true)
       return
     }
-    const handler = (e) => {
-      e.preventDefault()
-      setInstallPrompt(e)
-    }
+
+    const handler = (e) => { e.preventDefault(); setInstallPrompt(e) }
     window.addEventListener('beforeinstallprompt', handler)
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
+
+  const dismissIosHint = () => {
+    localStorage.setItem('nudge_ios_hint_dismissed', '1')
+    setShowIosHint(false)
+  }
 
   const handleInstall = async () => {
     if (!installPrompt) return
@@ -46,10 +56,10 @@ export default function HomePage() {
         {/* Hero */}
         <section className="pt-2">
           <h1 className="text-[2.5rem] leading-[1.05] font-black tracking-tighter text-primary mb-3">
-            Sleep on your<br />commute.
+            Please, rest on your<br />commute.
           </h1>
           <p className="text-[0.9375rem] text-on-surface-variant leading-relaxed">
-            We'll wake you before your stop — and call for help if you miss it.
+            Nudge will make sure you dont miss your stop..
           </p>
         </section>
 
@@ -101,6 +111,21 @@ export default function HomePage() {
 
         {/* CTAs */}
         <div className="space-y-3">
+          {/* iOS install hint — Safari doesn't support beforeinstallprompt */}
+          {showIosHint && (
+            <div className="w-full flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-secondary-container border border-secondary/20">
+              <span className="material-symbols-outlined text-on-secondary-container flex-shrink-0" style={{ fontSize: '18px', fontVariationSettings: "'FILL' 1" }}>
+                ios_share
+              </span>
+              <p className="text-[0.8125rem] font-medium text-on-secondary-container flex-1 leading-snug">
+                Tap <span className="font-black">Share</span> then <span className="font-black">Add to Home Screen</span> to install
+              </p>
+              <button onClick={dismissIosHint} className="flex-shrink-0 active:opacity-60">
+                <span className="material-symbols-outlined text-on-secondary-container/60" style={{ fontSize: '16px' }}>close</span>
+              </button>
+            </div>
+          )}
+
           {/* PWA install prompt — only shown when browser supports it and not yet installed */}
           {installPrompt && !isInstalled && (
             <button
@@ -122,7 +147,7 @@ export default function HomePage() {
             href="/journey/setup"
             className="flex items-center justify-center w-full h-[54px] rounded-full bg-primary text-white font-bold text-[1rem] tracking-tight active:scale-[0.97] transition-all duration-150"
           >
-            Start a journey
+            Start a trip
           </Link>
           <Link
             href="/settings"
