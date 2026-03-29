@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"c:/Users/danie/Desktop/Dev/hackathons/nudge/app/api/watch/[token]\")",
+      "Bash(mkdir -p \"c:/Users/danie/Desktop/Dev/hackathons/nudge/app/watch/[token]\")",
+      "Bash(node -e \"const fs = require\\(''fs''\\); [''app/journey/transfer/page.js'',''app/api/watch/route.js'',''app/api/watch/[token]/route.js'',''app/watch/[token]/page.js''].forEach\\(f => { const p = ''c:/Users/danie/Desktop/Dev/hackathons/nudge/'' + f; console.log\\(f + '':'', fs.existsSync\\(p\\) ? ''EXISTS \\('' + fs.statSync\\(p\\).size + '' bytes\\)'' : ''MISSING''\\) }\\)\")",
+      "Bash(node -e \"const fs = require\\(''fs''\\); const ctx = fs.readFileSync\\(''c:/Users/danie/Desktop/Dev/hackathons/nudge/context/JourneyContext.js'',''utf8''\\); console.log\\(''TRANSFER state:'', ctx.includes\\(''TRANSFER''\\)\\); console.log\\(''pendingLegs:'', ctx.includes\\(''pendingLegs''\\)\\); console.log\\(''completeCurrentLeg:'', ctx.includes\\(''completeCurrentLeg''\\)\\); console.log\\(''boardNextLeg:'', ctx.includes\\(''boardNextLeg''\\)\\); console.log\\(''watchToken:'', ctx.includes\\(''watchToken''\\)\\); console.log\\(''api/watch POST:'', ctx.includes\\(''/api/watch''\\)\\);\")",
+      "Bash(node -e \"const fs = require\\(''fs''\\); const active = fs.readFileSync\\(''c:/Users/danie/Desktop/Dev/hackathons/nudge/app/journey/active/page.js'',''utf8''\\); console.log\\(''CognitivePuzzle:'', active.includes\\(''CognitivePuzzle''\\)\\); console.log\\(''PUZZLE_TYPES:'', active.includes\\(''PUZZLE_TYPES''\\)\\); console.log\\(''shake animation:'', active.includes\\(''animate-shake''\\)\\); console.log\\(''onSolve:'', active.includes\\(''onSolve''\\)\\); console.log\\(''completeCurrentLeg in Phase2:'', active.includes\\(''completeCurrentLeg''\\)\\);\")",
+      "Bash(node -e \"const fs = require\\(''fs''\\); const tw = fs.readFileSync\\(''c:/Users/danie/Desktop/Dev/hackathons/nudge/tailwind.config.js'',''utf8''\\); console.log\\(''shake keyframe:'', tw.includes\\(\"\"''shake''\"\"\\)\\); console.log\\(''animate-shake:'', tw.includes\\(\"\"''shake'': ''shake\"\"\\)\\);\")",
+      "Bash(node -e \"const fs = require\\(''fs''\\); const tw = fs.readFileSync\\(''c:/Users/danie/Desktop/Dev/hackathons/nudge/tailwind.config.js'',''utf8''\\); const anim = tw.slice\\(tw.indexOf\\(''animation:''\\)\\); console.log\\(anim.slice\\(0, 400\\)\\);\")",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

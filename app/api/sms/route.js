@@ -3,14 +3,19 @@ import { NextResponse } from 'next/server'
 
 export async function POST(req) {
   try {
-    const { phone, userName, stopName, lat, lng } = await req.json()
+    const { phone, userName, stopName, lat, lng, type, watchUrl } = await req.json()
 
     if (!phone || !phone.trim()) {
       return NextResponse.json({ error: 'Phone number is required' }, { status: 400 })
     }
 
-    const mapsLink = `https://maps.google.com/?q=${lat},${lng}`
-    const message = `URGENT: ${userName} missed their stop at ${stopName}. Their current location: ${mapsLink}`
+    let message
+    if (type === 'watch') {
+      message = `${userName} has started a journey with Nudge and added you as their emergency contact. Watch their live location here: ${watchUrl}`
+    } else {
+      const mapsLink = `https://maps.google.com/?q=${lat},${lng}`
+      message = `URGENT: ${userName} missed their stop at ${stopName}. Their current location: ${mapsLink}${watchUrl ? ` — Live tracking: ${watchUrl}` : ''}`
+    }
 
     const client = new Infobip({
       baseUrl: process.env.INFOBIP_BASE_URL,

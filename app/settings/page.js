@@ -1,138 +1,94 @@
 import Link from 'next/link'
 
-const settingsItems = [
-  { category: 'Safety', label: 'Emergency Contacts', href: '/contacts' },
-  { category: 'Audio', label: 'Alarm Sound', href: null },
-  { category: 'Permissions', label: 'Privacy & Location', href: null },
+const items = [
+  { category: 'Safety',      label: 'Emergency Contacts', href: '/contacts', icon: 'contacts' },
+  { category: 'Audio',       label: 'Alarm Sound',        href: null,         icon: 'volume_up' },
+  { category: 'Permissions', label: 'Privacy & Location', href: null,         icon: 'location_on' },
 ]
 
 export default function SettingsPage() {
   return (
-    <div className="font-body antialiased min-h-screen bg-white">
+    <div className="bg-surface-container-lowest text-on-surface min-h-dvh max-w-[430px] mx-auto">
+
       {/* Header */}
-      <header className="fixed top-0 w-full z-50 bg-white/80 backdrop-blur-xl">
-        <nav className="flex items-center justify-between px-8 py-6 max-w-full mx-auto">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="material-symbols-outlined text-black active:scale-95 transition-transform duration-200 cursor-pointer"
-            >
-              arrow_back
+      <header className="fixed top-0 w-full max-w-[430px] z-50 bg-white/80 backdrop-blur-xl">
+        <nav className="flex items-center justify-between px-8 py-5">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="p-1 active:scale-90 transition-transform">
+              <span className="material-symbols-outlined text-primary" style={{ fontSize: '22px' }}>arrow_back</span>
             </Link>
-            <span className="font-black text-2xl tracking-tighter text-black uppercase">Nudge</span>
+            <span className="font-black text-xl tracking-tighter text-primary uppercase">Nudge</span>
           </div>
         </nav>
       </header>
 
-      <main className="pt-32 pb-32 px-8 max-w-2xl mx-auto">
-        {/* Profile */}
-        <section className="mb-16">
+      <main className="pt-28 pb-32 px-8">
+
+        {/* Hero profile */}
+        <section className="mb-14">
           <div className="w-24 h-24 rounded-full overflow-hidden mb-8 bg-surface-container flex items-center justify-center">
-            <span className="material-symbols-outlined text-4xl text-on-surface-variant">person</span>
+            <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: '40px', fontVariationSettings: "'FILL' 0, 'wght' 200" }}>person</span>
           </div>
           <h1 className="text-[2rem] font-black tracking-tight mb-2 leading-none uppercase">Your Settings</h1>
-          <p className="text-on-surface-variant font-medium text-lg">Manage your personal preferences</p>
+          <p className="text-on-surface-variant font-medium text-[1.0625rem]">Manage your personal preferences</p>
         </section>
 
-        {/* Settings List */}
-        <div className="flex flex-col space-y-12">
-          {settingsItems.map((item) =>
+        {/* Settings list */}
+        <div className="flex flex-col space-y-10 mb-16">
+          {items.map((item) => (
             item.href ? (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="flex items-center justify-between group text-left w-full active:scale-95 transition-transform duration-200"
-              >
+              <Link key={item.label} href={item.href}
+                className="flex items-center justify-between group text-left w-full active:scale-95 transition-transform duration-200">
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold tracking-widest uppercase text-on-surface-variant mb-1">
-                    {item.category}
-                  </span>
-                  <span className="text-xl font-bold tracking-tight">{item.label}</span>
+                  <span className="text-[0.6875rem] font-bold tracking-widest uppercase text-on-surface-variant mb-1">{item.category}</span>
+                  <span className="text-[1.25rem] font-bold tracking-tight">{item.label}</span>
                 </div>
-                <span className="material-symbols-outlined text-black group-hover:translate-x-1 transition-transform">
-                  chevron_right
-                </span>
+                <span className="material-symbols-outlined text-primary group-hover:translate-x-1 transition-transform">chevron_right</span>
               </Link>
             ) : (
-              <button
-                key={item.label}
-                className="flex items-center justify-between group text-left w-full active:scale-95 transition-transform duration-200 opacity-40 cursor-not-allowed"
-                disabled
-              >
+              <div key={item.label}
+                className="flex items-center justify-between text-left w-full opacity-30">
                 <div className="flex flex-col">
-                  <span className="text-xs font-bold tracking-widest uppercase text-on-surface-variant mb-1">
-                    {item.category}
-                  </span>
-                  <span className="text-xl font-bold tracking-tight">{item.label}</span>
+                  <span className="text-[0.6875rem] font-bold tracking-widest uppercase text-on-surface-variant mb-1">{item.category}</span>
+                  <span className="text-[1.25rem] font-bold tracking-tight">{item.label}</span>
                 </div>
-                <span className="material-symbols-outlined text-black">chevron_right</span>
-              </button>
+                <span className="text-[0.6875rem] font-bold uppercase tracking-widest text-on-surface-variant px-3 py-1 rounded-full bg-surface-container">Soon</span>
+              </div>
             )
-          )}
+          ))}
 
-          {/* Sign Out */}
-          <Link
-            href="/"
-            className="flex items-center justify-between group text-left w-full active:scale-95 transition-transform duration-200 mt-12 pt-12 border-t border-outline-variant/20"
-          >
+          {/* Sign out */}
+          <Link href="/"
+            className="flex items-center justify-between group text-left w-full active:scale-95 transition-transform duration-200 pt-10 mt-4 border-t border-outline-variant/30">
             <div className="flex flex-col">
-              <span className="text-xs font-bold tracking-widest uppercase text-on-surface-variant mb-1">Account</span>
-              <span className="text-xl font-bold tracking-tight">Sign Out</span>
+              <span className="text-[0.6875rem] font-bold tracking-widest uppercase text-on-surface-variant mb-1">Account</span>
+              <span className="text-[1.25rem] font-bold tracking-tight">Sign Out</span>
             </div>
-            <span className="material-symbols-outlined text-black">logout</span>
+            <span className="material-symbols-outlined text-primary group-hover:translate-x-1 transition-transform">logout</span>
           </Link>
         </div>
 
-        {/* Pro Upsell */}
-        <section className="mt-24">
-          <div className="bg-primary text-white p-10 rounded-xl flex flex-col justify-between aspect-square md:aspect-video relative overflow-hidden">
-            <div className="z-10">
-              <h2 className="text-3xl font-black tracking-tighter uppercase mb-4 leading-tight">
-                Pro<br />Security
-              </h2>
-              <p className="text-on-primary-fixed-variant text-lg max-w-xs">
-                Unlock 24/7 monitoring and advanced alerts for your peace of mind.
-              </p>
-            </div>
-            <button className="z-10 mt-8 bg-white text-black px-8 py-4 rounded-full font-bold self-start active:scale-95 transition-transform">
-              Upgrade Now
-            </button>
-            <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-secondary-container rounded-full blur-[80px] opacity-20" />
-          </div>
-        </section>
+
       </main>
 
-      {/* Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 w-full z-50 pb-safe bg-white/80 backdrop-blur-xl shadow-[0_-8px_32px_rgba(0,0,0,0.04)]">
-        <div className="flex justify-around items-center px-6 py-4 w-full">
-          <Link
-            href="/"
-            className="flex flex-col items-center justify-center text-neutral-400 p-4 hover:text-black transition-colors active:scale-90 duration-300"
-          >
-            <span className="material-symbols-outlined">home</span>
+      {/* Bottom nav */}
+      <nav className="md:hidden fixed bottom-0 w-full max-w-[430px] left-1/2 -translate-x-1/2 z-50 bg-white/90 backdrop-blur-xl shadow-[0_-1px_0_rgba(0,0,0,0.06)]">
+        <div className="flex justify-around items-center px-4 py-4">
+          <Link href="/" className="flex flex-col items-center p-3 text-on-surface-variant hover:text-primary transition-colors active:scale-90">
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>home_max</span>
           </Link>
-          <Link
-            href="/journey/setup"
-            className="flex flex-col items-center justify-center text-neutral-400 p-4 hover:text-black transition-colors active:scale-90 duration-300"
-          >
-            <span className="material-symbols-outlined">directions_bus</span>
+          <Link href="/journey/setup" className="flex flex-col items-center p-3 text-on-surface-variant hover:text-primary transition-colors active:scale-90">
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>directions_bus</span>
           </Link>
-          <Link
-            href="/contacts"
-            className="flex flex-col items-center justify-center text-neutral-400 p-4 hover:text-black transition-colors active:scale-90 duration-300"
-          >
-            <span className="material-symbols-outlined">notifications</span>
+          <Link href="/contacts" className="flex flex-col items-center p-3 text-on-surface-variant hover:text-primary transition-colors active:scale-90">
+            <span className="material-symbols-outlined" style={{ fontSize: '24px' }}>security</span>
           </Link>
-          <div className="flex flex-col items-center justify-center bg-black text-white rounded-full p-4 scale-110 active:scale-90 duration-300 cursor-pointer">
-            <span
-              className="material-symbols-outlined"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              person
-            </span>
+          <div className="flex flex-col items-center bg-primary text-white rounded-full p-3 scale-110 active:scale-90 transition-all">
+            <span className="material-symbols-outlined" style={{ fontSize: '24px', fontVariationSettings: "'FILL' 1" }}>person</span>
           </div>
         </div>
       </nav>
+
     </div>
   )
 }

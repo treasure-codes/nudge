@@ -10,6 +10,7 @@ export const JOURNEY_STATE = {
   PHASE_1: 'PHASE_1',   // 1000m — gentle warning
   PHASE_2: 'PHASE_2',   // 200m  — full alarm + countdown
   MISSED: 'MISSED',     // ignored alarm / passed stop
+  TRANSFER: 'TRANSFER', // completed a leg, waiting to board next
 }
 
 const PHASE_1_METERS = 1000
@@ -32,6 +33,12 @@ export function JourneyProvider({ children }) {
   const [smsSent, setSmsSent] = useState(false)
   const [simMode, setSimMode] = useState(false)
 
+  // Multi-leg state
+  const [pendingLegs, setPendingLegs] = useState([])
+  const [currentLegIndex, setCurrentLegIndex] = useState(0)
+  const [totalLegs, setTotalLegs] = useState(1)
+  const [watchToken, setWatchToken] = useState(null)
+
   const watchIdRef = useRef(null)
   const countdownRef = useRef(null)
   const audioCtxRef = useRef(null)
@@ -44,8 +51,13 @@ export function JourneyProvider({ children }) {
   // Phase 1 cooldown: timestamp after which Phase 1 can fire again
   // 0 = always allow, Infinity = never allow again (user said "I am awake")
   const phase1CooldownRef = useRef(0)
+  const pendingLegsRef = useRef([])
+  // ETA API throttle
+  const lastEtaFetchRef = useRef(0)
+  const lastEtaPositionRef = useRef(null)
 
   useEffect(() => { stateRef.current = state }, [state])
+  useEffect(() => { pendingLegsRef.current = pendingLegs }, [pendingLegs])
 
   // Load contacts + username
   useEffect(() => {
@@ -248,6 +260,7 @@ export function JourneyProvider({ children }) {
     if (!lat || !lng) return
     setSmsSent(true)
     try {
+      const watchUrl = watchToken ? `${window.location.origin}/watch/${watchToken}` : null
       await fetch('/api/sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -257,6 +270,7 @@ export function JourneyProvider({ children }) {
           stopName: destination?.name ?? 'their stop',
           lat,
           lng,
+          watchUrl,
         }),
       })
     } catch (e) {
@@ -304,22 +318,57 @@ export function JourneyProvider({ children }) {
 
   /**
    * Start a new journey to the given destination.
+   * @param {object} dest - destination object
+   * @param {object[]} extraLegs - additional legs after the first
    */
-  const startJourney = useCallback((dest) => {
+  const startJourney = useCallback((dest, extraLegs = []) => {
     const savedContacts = (() => {
       try { return JSON.parse(localStorage.getItem('nudge_contacts') || '[]') } catch { return [] }
     })()
     const savedName = localStorage.getItem('nudge_username') || 'User'
 
+    let token = null
+    try {
+      token = localStorage.getItem('nudge_watch_token')
+      if (!token) {
+        token = Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
+        localStorage.setItem('nudge_watch_token', token)
+      }
+    } catch {}
+    setWatchToken(token)
+    setPendingLegs(extraLegs)
+    pendingLegsRef.current = extraLegs
+    setCurrentLegIndex(0)
+    setTotalLegs(1 + extraLegs.length)
+
     setDestination(dest)
     setContacts(savedContacts)
     setUserName(savedName)
     setSmsSent(false)
+    setEtaMinutes(null)
+    lastEtaFetchRef.current = 0
+    lastEtaPositionRef.current = null
     minDistRef.current = Infinity
     simDistanceRef.current = 2000
     phase1CooldownRef.current = 0
     setState(JOURNEY_STATE.MONITORING)
     acquireWakeLock()
+
+    // Send watch link SMS to primary contact
+    if (savedContacts[0]?.phone && token) {
+      const watchUrl = `${window.location.origin}/watch/${token}`
+      fetch('/api/sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: savedContacts[0].phone,
+          userName: savedName,
+          type: 'watch',
+          watchUrl,
+        }),
+      }).catch(() => {})
+    }
+
     router.push('/journey/active')
   }, [router])
 
@@ -370,6 +419,7 @@ export function JourneyProvider({ children }) {
   }, [stopAlarm, router])
 
   const confirmSafe = useCallback(() => {
+    const contactName = contacts[0]?.name ?? null
     releaseWakeLock()
     clearInterval(simIntervalRef.current)
     setState(JOURNEY_STATE.IDLE)
@@ -378,14 +428,113 @@ export function JourneyProvider({ children }) {
     setSmsSent(false)
     phase1CooldownRef.current = 0
     setSimMode(false)
-    router.push('/')
+    const qs = contactName ? `?contact=${encodeURIComponent(contactName)}` : ''
+    router.push(`/safe${qs}`)
+  }, [router, contacts])
+
+  /**
+   * Called when the Phase 2 puzzle is solved.
+   * If there are more legs, go to transfer screen; otherwise go to safe screen.
+   */
+  const completeCurrentLeg = useCallback(() => {
+    stopAlarm()
+    navigator.vibrate?.(0)
+    clearInterval(countdownRef.current)
+    clearInterval(simIntervalRef.current)
+    if (pendingLegsRef.current.length > 0) {
+      releaseWakeLock()
+      setState(JOURNEY_STATE.TRANSFER)
+      router.push('/journey/transfer')
+    } else {
+      releaseWakeLock()
+      const contactName = contacts[0]?.name ?? null
+      setState(JOURNEY_STATE.IDLE)
+      setDestination(null)
+      setDistanceToStop(null)
+      setSmsSent(false)
+      minDistRef.current = Infinity
+      phase1CooldownRef.current = 0
+      setSimMode(false)
+      const qs = contactName ? `?contact=${encodeURIComponent(contactName)}` : ''
+      router.push(`/safe${qs}`)
+    }
+  }, [stopAlarm, contacts, router])
+
+  /**
+   * Board the next leg of a multi-leg journey.
+   */
+  const boardNextLeg = useCallback(() => {
+    const legs = pendingLegsRef.current
+    if (!legs.length) return
+    const [nextLeg, ...rest] = legs
+    setPendingLegs(rest)
+    pendingLegsRef.current = rest
+    setDestination(nextLeg)
+    setCurrentLegIndex(prev => prev + 1)
+    setSmsSent(false)
+    minDistRef.current = Infinity
+    simDistanceRef.current = 2000
+    phase1CooldownRef.current = 0
+    setState(JOURNEY_STATE.MONITORING)
+    acquireWakeLock()
+    router.push('/journey/active')
   }, [router])
 
   const toggleSimMode = useCallback(() => setSimMode((prev) => !prev), [])
 
-  const etaMinutes = distanceToStop !== null
-    ? Math.max(1, Math.round(distanceToStop / 500))
-    : null
+  const [etaMinutes, setEtaMinutes] = useState(null)
+
+  // ── ROUTES API ETA (throttled: every 45s or >30m movement) ──────────
+  useEffect(() => {
+    if (!position || !destination?.lat || simMode) return
+    const now = Date.now()
+    const last = lastEtaPositionRef.current
+    const movedEnough = !last ||
+      haversine(position.lat, position.lng, last.lat, last.lng) > 30
+    const enoughTime = now - lastEtaFetchRef.current > 45_000
+    if (!movedEnough && !enoughTime) return
+
+    lastEtaFetchRef.current = now
+    lastEtaPositionRef.current = position
+
+    fetch('/api/eta', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        originLat: position.lat,
+        originLng: position.lng,
+        destLat: destination.lat,
+        destLng: destination.lng,
+      }),
+    })
+      .then(r => r.json())
+      .then(data => { if (data.durationMinutes) setEtaMinutes(data.durationMinutes) })
+      .catch(() => {})
+  }, [position, destination, simMode])
+
+  // ── WATCH STATE PUBLISHER ──────────────────────────────────────────
+  useEffect(() => {
+    if (!watchToken || state === JOURNEY_STATE.IDLE) return
+    const payload = {
+      token: watchToken,
+      state,
+      destinationName: destination?.name ?? null,
+      distanceToStop,
+      etaMinutes,
+      lat: position?.lat ?? null,
+      lng: position?.lng ?? null,
+      destLat: destination?.lat ?? null,
+      destLng: destination?.lng ?? null,
+      userName,
+      currentLegIndex,
+      totalLegs,
+    }
+    fetch('/api/watch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }).catch(() => {})
+  }, [state, distanceToStop, position, watchToken])
 
   return (
     <JourneyContext.Provider value={{
@@ -399,6 +548,10 @@ export function JourneyProvider({ children }) {
       userName,
       smsSent,
       simMode,
+      pendingLegs,
+      currentLegIndex,
+      totalLegs,
+      watchToken,
       JOURNEY_STATE,
       startJourney,
       dismissWarning,
@@ -406,6 +559,8 @@ export function JourneyProvider({ children }) {
       endJourney,
       confirmSafe,
       toggleSimMode,
+      completeCurrentLeg,
+      boardNextLeg,
       setContacts,
       setUserName,
     }}>

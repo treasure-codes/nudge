@@ -39,20 +39,37 @@ export async function GET(req) {
     return NextResponse.json({ predictions: [] })
   }
 
-  // Bias results toward Nashville, TN
-  const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(q)}&locationbias=circle:80000@36.1627,-86.7816&key=${MAPS_KEY}`
+  // Try Places Autocomplete first (soft bias toward Nashville, wide radius)
+  const autocompleteUrl = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(q)}&locationbias=circle:500000@36.1627,-86.7816&key=${MAPS_KEY}`
   try {
-    const res = await fetch(url)
+    const res = await fetch(autocompleteUrl)
     const data = await res.json()
     if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
       return NextResponse.json({ error: data.status }, { status: 400 })
     }
-    const predictions = (data.predictions || []).slice(0, 6).map((p) => ({
+
+    let predictions = (data.predictions || []).slice(0, 6).map((p) => ({
       placeId: p.place_id,
       description: p.description,
       mainText: p.structured_formatting?.main_text ?? p.description,
       secondaryText: p.structured_formatting?.secondary_text ?? '',
     }))
+
+    // If autocomplete returns nothing, fall back to Geocoding API (handles street addresses better)
+    if (predictions.length === 0) {
+      const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(q)}&key=${MAPS_KEY}`
+      const gRes = await fetch(geocodeUrl)
+      const gData = await gRes.json()
+      if (gData.status === 'OK' && gData.results?.length) {
+        predictions = gData.results.slice(0, 4).map((r) => ({
+          placeId: r.place_id,
+          description: r.formatted_address,
+          mainText: r.address_components?.[0]?.long_name ?? r.formatted_address,
+          secondaryText: r.formatted_address,
+        }))
+      }
+    }
+
     return NextResponse.json({ predictions })
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: 500 })

@@ -4,18 +4,15 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useJourney, JOURNEY_STATE } from '@/context/JourneyContext'
 
-const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
-
 export default function MissedPage() {
   const router = useRouter()
   const { state, destination, position, contacts, confirmSafe, smsSent } = useJourney()
-  const [broadcastCountdown, setBroadcastCountdown] = useState(900) // 15 min
+  const [broadcastCountdown, setBroadcastCountdown] = useState(900)
 
   useEffect(() => {
     if (state === JOURNEY_STATE.IDLE) router.replace('/')
   }, [state, router])
 
-  // Broadcast countdown
   useEffect(() => {
     if (state !== JOURNEY_STATE.MISSED) return
     const t = setInterval(() => {
@@ -32,34 +29,24 @@ export default function MissedPage() {
   const primaryContact = contacts[0]
   const lat = position?.lat ?? destination?.lat
   const lng = position?.lng ?? destination?.lng
-
-  const staticMapUrl = lat && lng && MAPS_KEY
-    ? `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=15&size=600x300&markers=color:black%7Clabel:!%7C${lat},${lng}&style=feature:all%7Celement:labels.text.fill%7Ccolor:0x000000&style=feature:all%7Celement:geometry%7Ccolor:0xf5f5f5&key=${MAPS_KEY}`
-    : null
-
-  const mapsLink = lat && lng ? `https://maps.google.com/?q=${lat},${lng}` : null
-
-  const minsLeft = Math.floor(broadcastCountdown / 60)
-  const secsLeft = broadcastCountdown % 60
+  const minsLeft = Math.ceil(broadcastCountdown / 60)
 
   return (
-    <div className="bg-surface-container-lowest text-on-surface min-h-screen flex flex-col">
+    <div className="bg-surface-container-lowest text-on-surface min-h-dvh flex flex-col max-w-[430px] mx-auto">
+
       {/* Header */}
-      <header className="bg-white w-full pt-12 pb-4 flex items-center justify-between px-8">
+      <header className="bg-white w-full pt-14 pb-5 flex items-center justify-between px-8">
         <div className="flex items-center gap-4">
-          <button
-            onClick={confirmSafe}
-            className="active:scale-95 duration-200 inline-flex"
-          >
-            <span className="material-symbols-outlined text-black">close</span>
+          <button onClick={confirmSafe} className="active:scale-95 transition-transform p-1">
+            <span className="material-symbols-outlined text-primary" style={{ fontSize: '24px' }}>close</span>
           </button>
-          <h1 className="font-bold text-[2.0rem] tracking-tight text-black">Alert</h1>
+          <h1 className="font-bold text-[1.75rem] tracking-tight text-primary">Alert</h1>
         </div>
       </header>
 
-      {/* Main */}
-      <main className="flex-grow px-8 pt-10 flex flex-col items-start max-w-lg mx-auto w-full">
-        {/* Status */}
+      <main className="flex-1 px-8 pt-10 pb-32 flex flex-col items-start max-w-lg mx-auto w-full">
+
+        {/* Live broadcast indicator */}
         <div className="mb-10 flex items-center gap-3">
           <div className="w-3 h-3 bg-error rounded-full animate-pulse" />
           <span className="text-[0.75rem] font-bold uppercase tracking-widest text-on-surface-variant">
@@ -68,88 +55,60 @@ export default function MissedPage() {
         </div>
 
         {/* Headline */}
-        <h2 className="text-[3.5rem] font-black leading-[1.1] tracking-tighter text-primary mb-8">
+        <h2 className="text-[3.5rem] font-black leading-[1.1] tracking-tighter text-primary mb-6">
           You missed your stop.
         </h2>
 
-        {/* Subheading */}
-        <p className="text-[1.125rem] leading-relaxed text-on-surface-variant font-medium mb-12">
+        {/* Notification text */}
+        <p className="text-[1.125rem] leading-relaxed text-on-surface-variant font-medium mb-14">
           {smsSent && primaryContact
-            ? `Your emergency contact (${primaryContact.name}) has been notified of your location.`
-            : 'Notifying your emergency contact now\u2026'}
+            ? `${primaryContact.name} has been notified of your location.`
+            : 'Notifying your emergency contact of your location…'}
         </p>
 
-        {/* Location */}
-        <section className="w-full mb-12">
+        {/* Location section */}
+        <section className="w-full mb-16">
           <div className="flex flex-col gap-2 mb-6">
             <span className="text-[0.75rem] font-bold uppercase tracking-widest text-on-surface-variant">
               Current Location
             </span>
-            <div className="flex items-start gap-4">
-              <span
-                className="material-symbols-outlined text-primary mt-1"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                location_on
-              </span>
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-primary mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
               <p className="text-[1.25rem] font-bold text-primary leading-snug">
-                {lat && lng
-                  ? `${lat.toFixed(4)}\u00b0 N, ${Math.abs(lng).toFixed(4)}\u00b0 W`
-                  : 'Getting location\u2026'}
+                {destination?.name ?? (lat ? `${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}` : 'Locating…')}
               </p>
             </div>
           </div>
 
           {/* Map */}
-          <div className="h-48 w-full bg-surface-container rounded-lg overflow-hidden relative">
-            {staticMapUrl ? (
-              <img
-                src={staticMapUrl}
-                alt="Current location map"
-                className="w-full h-full object-cover grayscale opacity-70"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-surface-container">
-                <span className="material-symbols-outlined text-4xl text-on-surface-variant">map</span>
-              </div>
-            )}
+          <div className="h-48 w-full bg-surface-container rounded-xl overflow-hidden relative">
+            <img
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuC09txA0gcW30ZXHmo01TyGs6f6iaREcXORBuKgAdomh8YgYxV2sDOI4QPnGaPVJKGKt6VkstmL6URJJhPe4exPRBa1eh1CLNCV9Sp0UHkHRRDYVrs8j6N0m32B3Gha-8mWIqsBo405U26QYq6acR0HYwHHqBbdgAr6yhGUqOlTDJW9z9y_82hBRb6234dGEoO2MTHEnDy5wHEDz47X43aRXRVlBpLHyU8Yfd2XGtBhkm4bk3kX9NkSGKO-vcfxt3nWW7_ufOVMFw4B"
+              alt="Map"
+              className="w-full h-full object-cover grayscale opacity-60"
+            />
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-8 h-8 bg-primary rounded-full border-4 border-white shadow-lg" />
             </div>
           </div>
-
-          {mapsLink && (
-            <a
-              href={mapsLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 flex items-center gap-2 text-sm font-bold text-secondary"
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>open_in_new</span>
-              Open in Google Maps
-            </a>
-          )}
         </section>
 
         {/* CTA */}
-        <div className="w-full pb-12">
+        <div className="w-full mt-auto">
           <button
             onClick={confirmSafe}
-            className="w-full h-[56px] bg-primary text-white rounded-full font-bold text-[1rem] active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-zinc-800"
+            className="w-full h-[56px] bg-primary text-white rounded-full font-bold text-[1rem] active:scale-[0.97] transition-all flex items-center justify-center gap-2"
           >
-            <span
-              className="material-symbols-outlined text-white"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
-              check_circle
-            </span>
+            <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
             I am safe. Stop broadcasting.
           </button>
-          <p className="text-center mt-6 text-[0.875rem] text-on-surface-variant font-medium">
-            Broadcast ends in {minsLeft}:{String(secsLeft).padStart(2, '0')}
+          <p className="text-center mt-5 text-[0.875rem] text-on-surface-variant font-medium">
+            Broadcast ends automatically in {minsLeft} minute{minsLeft !== 1 ? 's' : ''}.
           </p>
         </div>
+
       </main>
+
     </div>
   )
 }
