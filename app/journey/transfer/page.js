@@ -14,7 +14,7 @@ export default function TransferPage() {
   useEffect(() => {
     if (state === JOURNEY_STATE.IDLE) router.replace('/')
     if (state === JOURNEY_STATE.MISSED) router.replace('/missed')
-    if ([JOURNEY_STATE.MONITORING, JOURNEY_STATE.PHASE_1, JOURNEY_STATE.PHASE_2].includes(state))
+    if ([JOURNEY_STATE.MONITORING, JOURNEY_STATE.PHASE_1].includes(state))
       router.replace('/journey/active')
   }, [state, router])
 
