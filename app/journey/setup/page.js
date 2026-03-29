@@ -168,14 +168,9 @@ function SetJourneyContent() {
         <div className="flex items-center gap-2">
           <Link
             href="/"
-            className="p-2 -ml-2 active:scale-90 transition-transform rounded-full hover:bg-surface-container"
+            className="text-[0.8125rem] font-bold text-primary active:opacity-60 transition-opacity"
           >
-            <span
-              className="material-symbols-outlined text-primary"
-              style={{ fontSize: '22px' }}
-            >
-              arrow_back
-            </span>
+            Home
           </Link>
           <span className="font-black text-primary text-xl tracking-tighter">
             Nudge

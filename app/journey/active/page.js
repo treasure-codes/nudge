@@ -225,17 +225,16 @@ function HeroSection({
     const major = allSteps.filter(s =>
       s.type === 'transfer' || s.type === 'alighting'
     )
-    const count = major.length + future.length
-    // No GTFS stops loaded — destination is still 1 stop away
-    if (count === 0 && destination) return 1
-    return count
-  }, [routeSteps, pendingLegs, destination])
+    return major.length + future.length
+  }, [routeSteps, pendingLegs])
 
-  const stopsLabel = majorStopsRemaining === 1
-    ? '1 stop away'
+  const stopsLabel = majorStopsRemaining === 0 && distanceToStop != null && distanceToStop <= 600
+    ? 'Arriving now'
     : majorStopsRemaining === 0
-      ? 'Arriving now'
-      : `${majorStopsRemaining} stops away`
+      ? 'En route'
+      : majorStopsRemaining === 1
+        ? '1 stop away'
+        : `${majorStopsRemaining} stops away`
 
   const etaLabel = etaMinutes != null && etaMinutes > 0
     ? `~${etaMinutes} min`
@@ -765,27 +764,35 @@ function Phase1Screen({ destination, etaMinutes, dismissWarning, atPenultimateSt
 // ─── ARRIVED ─────────────────────────────────────────────────────────────────
 function ArrivedScreen({ destination }) {
   return (
-    <div className="bg-primary text-white min-h-dvh flex flex-col items-center justify-center max-w-[430px] mx-auto text-center px-8">
-      <div className="w-full">
-        <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-8">
+    <div className="bg-surface-container-lowest text-on-surface min-h-dvh flex flex-col max-w-[430px] mx-auto">
+      <header className="bg-surface-container-lowest/95 backdrop-blur-sm text-primary font-black tracking-tighter uppercase text-xl w-full flex justify-between items-center px-6 py-7">
+        <span>Nudge</span>
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
+          <span className="text-[0.625rem] font-bold uppercase tracking-widest text-secondary">Live</span>
+        </div>
+      </header>
+
+      <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
+        <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center mx-auto mb-8">
           <span
             className="material-symbols-outlined text-white"
-            style={{ fontSize: '32px', fontVariationSettings: "'FILL' 1" }}
+            style={{ fontSize: '36px', fontVariationSettings: "'FILL' 1" }}
           >
-            check
+            notifications_active
           </span>
         </div>
 
-        <h1 className="text-[2.5rem] font-black tracking-tighter leading-tight mb-2 uppercase">
+        <p className="text-[0.75rem] font-bold uppercase tracking-widest text-on-surface-variant mb-2">
+          Get ready to alight
+        </p>
+
+        <h1 className="text-[3rem] font-black tracking-tighter leading-[1.05] text-primary mb-3">
           Your stop<br />is next
         </h1>
 
-        <p className="text-[1.25rem] font-bold text-white/80 tracking-tight mb-8">
+        <p className="text-[1.25rem] font-bold text-on-surface-variant tracking-tight">
           {destination?.name}
-        </p>
-
-        <p className="text-[0.875rem] font-bold tracking-widest uppercase text-white/50">
-          Get ready to alight
         </p>
       </div>
     </div>
@@ -794,37 +801,38 @@ function ArrivedScreen({ destination }) {
 
 // ─── SAFE TRIP ───────────────────────────────────────────────────────────────
 function SafeTripScreen({ destination, onPlanAnother }) {
-  return (
-    <div className="bg-surface-container-lowest text-on-surface min-h-dvh flex flex-col items-center justify-center max-w-[430px] mx-auto text-center px-8">
-      <div className="w-full">
-        <div className="w-20 h-20 rounded-full bg-secondary-container flex items-center justify-center mx-auto mb-6">
-          <span
-            className="material-symbols-outlined text-secondary"
-            style={{ fontSize: '40px', fontVariationSettings: "'FILL' 1" }}
-          >
-            home_pin
-          </span>
-        </div>
+  const arrivalTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
-        <p className="text-[0.75rem] font-bold text-on-surface-variant uppercase tracking-widest mb-1">
-          You arrived at
+  return (
+    <div className="bg-surface-container-lowest text-on-surface min-h-dvh flex flex-col max-w-[430px] mx-auto px-8">
+
+      <div className="flex-1 flex flex-col justify-center">
+        <p className="text-[0.75rem] font-bold uppercase tracking-widest text-secondary mb-4">
+          You're here.
         </p>
 
-        <h1 className="text-[2rem] font-black tracking-tight text-primary leading-tight mb-6 px-4">
-          {destination?.name}
+        <h1 className="text-[3.5rem] font-black tracking-tighter leading-[1.0] text-primary mb-5">
+          {destination?.name ?? 'Your destination'}
         </h1>
 
-        <p className="text-[1.125rem] font-medium text-on-surface-variant mb-12">
-          Safe travels 🙂
+        <p className="text-[0.9375rem] text-on-surface-variant font-medium mb-1">
+          Arrived at {arrivalTime}
         </p>
 
+        <p className="text-[0.9375rem] text-on-surface-variant/50 font-medium">
+          Safe travels.
+        </p>
+      </div>
+
+      <div className="pb-14">
         <button
           onClick={onPlanAnother}
-          className="w-full h-[52px] rounded-full bg-surface-container text-primary font-bold text-[1.0625rem] tracking-tight active:scale-95 transition-all border border-outline-variant/30"
+          className="w-full h-[52px] rounded-full border border-outline-variant/40 text-primary font-bold text-[1.0625rem] tracking-tight active:scale-95 transition-all"
         >
           Start a journey
         </button>
       </div>
+
     </div>
   )
 }
