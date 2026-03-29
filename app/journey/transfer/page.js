@@ -14,7 +14,7 @@ export default function TransferPage() {
   useEffect(() => {
     if (state === JOURNEY_STATE.IDLE) router.replace('/')
     if (state === JOURNEY_STATE.MISSED) router.replace('/missed')
-    if ([JOURNEY_STATE.MONITORING, JOURNEY_STATE.PHASE_1, JOURNEY_STATE.PHASE_2].includes(state))
+    if ([JOURNEY_STATE.MONITORING, JOURNEY_STATE.PHASE_1].includes(state))
       router.replace('/journey/active')
   }, [state, router])
 
@@ -35,7 +35,7 @@ export default function TransferPage() {
     <div className="bg-surface-container-lowest text-on-surface min-h-dvh flex flex-col max-w-[430px] mx-auto">
 
       {/* Header */}
-      <header className="bg-white w-full sticky top-0 z-50 flex items-center justify-between px-8 py-6">
+      <header className="bg-surface-container-lowest/95 backdrop-blur-sm w-full sticky top-0 z-50 flex items-center justify-between px-8 py-6">
         <button onClick={endJourney} className="p-2 -ml-2 active:scale-90 transition-transform hover:bg-surface-container rounded-full">
           <span className="material-symbols-outlined text-primary" style={{ fontSize: '22px' }}>close</span>
         </button>
@@ -100,7 +100,7 @@ export default function TransferPage() {
       </main>
 
       {/* Fixed bottom */}
-      <div className="fixed bottom-0 left-0 w-full max-w-[430px] left-1/2 -translate-x-1/2 px-8 pb-12 pt-4 bg-white/90 backdrop-blur-xl space-y-3">
+      <div className="fixed bottom-0 left-0 w-full max-w-[430px] left-1/2 -translate-x-1/2 px-8 pb-12 pt-4 bg-surface-container-lowest/95 backdrop-blur-sm space-y-3 border-t border-outline-variant/20">
         <button
           onClick={boardNextLeg}
           className="w-full h-[56px] rounded-full bg-primary text-white font-bold text-[1.0625rem] active:scale-[0.97] transition-all shadow-[0_8px_32px_rgba(0,0,0,0.1)]"

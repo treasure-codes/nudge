@@ -124,6 +124,27 @@ export default function SubscribePage() {
           </div>
         </div>
 
+      ) : status === 'error' ? (
+        <div className="text-center space-y-6">
+          <div className="w-20 h-20 rounded-full bg-error-container flex items-center justify-center mx-auto">
+            <span className="material-symbols-outlined text-error" style={{ fontSize: '40px', fontVariationSettings: "'FILL' 1" }}>
+              error
+            </span>
+          </div>
+          <div>
+            <h1 className="text-[2rem] font-black tracking-tighter text-primary mb-2">Something went wrong</h1>
+            <p className="text-on-surface-variant text-[1rem] leading-relaxed">
+              We couldn't set up notifications. Please try again.
+            </p>
+          </div>
+          <button
+            onClick={() => setStatus('idle')}
+            className="h-12 px-8 rounded-full font-bold text-[0.9375rem] text-white bg-primary active:scale-95 transition-transform"
+          >
+            Try again
+          </button>
+        </div>
+
       ) : (
         <div className="text-center space-y-8">
           <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center mx-auto">

@@ -27,7 +27,6 @@ export default function MissedPage() {
     if (state === JOURNEY_STATE.IDLE) router.replace('/')
   }, [state, router])
 
-  // Countdown — auto-confirm safe after 15 min
   useEffect(() => {
     if (state !== JOURNEY_STATE.MISSED) return
     const t = setInterval(() => {
@@ -39,14 +38,12 @@ export default function MissedPage() {
     return () => clearInterval(t)
   }, [state, confirmSafe])
 
-  // Fetch safe nearby places + ETA back to destination
   useEffect(() => {
     if (state !== JOURNEY_STATE.MISSED) return
     const lat = position?.lat ?? (destination?.lat ? destination.lat + 0.005 : null)
     const lng = position?.lng ?? (destination?.lng ? destination.lng + 0.003 : null)
     if (!lat || !lng) return
 
-    // Safe spots
     setSpotsLoading(true)
     fetch(`/api/places/nearby?lat=${lat}&lng=${lng}`)
       .then(r => r.json())
@@ -54,7 +51,6 @@ export default function MissedPage() {
       .catch(() => {})
       .finally(() => setSpotsLoading(false))
 
-    // ETA back
     if (destination?.lat && destination?.lng) {
       fetch('/api/eta', {
         method: 'POST',
@@ -68,7 +64,6 @@ export default function MissedPage() {
         .then(d => { if (d.durationMinutes) setEtaBack(d.durationMinutes) })
         .catch(() => {})
 
-      // In-app reroute via WeGo GTFS
       setRerouteLoading(true)
       fetch(`/api/wego-reroute?userLat=${lat}&userLng=${lng}&destLat=${destination.lat}&destLng=${destination.lng}`)
         .then(r => r.json())
@@ -86,19 +81,19 @@ export default function MissedPage() {
   const minsLeft = Math.ceil(broadcastCountdown / 60)
 
   return (
-    <div className="bg-surface-container-lowest text-on-surface min-h-dvh flex flex-col max-w-[430px] mx-auto">
+    <div className="bg-error-container/20 text-on-surface min-h-dvh flex flex-col max-w-[430px] mx-auto">
 
       {/* Header */}
-      <header className="bg-white w-full pt-14 pb-5 flex items-center justify-between px-8">
+      <header className="bg-error w-full pt-14 pb-5 flex items-center justify-between px-8">
         <div className="flex items-center gap-4">
           <button onClick={confirmSafe} className="active:scale-95 transition-transform p-1">
-            <span className="material-symbols-outlined text-primary" style={{ fontSize: '24px' }}>close</span>
+            <span className="material-symbols-outlined text-white" style={{ fontSize: '24px' }}>close</span>
           </button>
-          <h1 className="font-bold text-[1.75rem] tracking-tight text-primary">Alert</h1>
+          <h1 className="font-black text-[1.75rem] tracking-tighter text-white">Alert</h1>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 bg-error rounded-full animate-pulse" />
-          <span className="text-[0.625rem] font-bold uppercase tracking-widest text-on-surface-variant">Live</span>
+          <div className="w-2.5 h-2.5 bg-white rounded-full animate-pulse" />
+          <span className="text-[0.625rem] font-bold uppercase tracking-widest text-white/80">Live</span>
         </div>
       </header>
 
@@ -106,7 +101,7 @@ export default function MissedPage() {
 
         {/* Headline */}
         <section>
-          <h2 className="text-[2.75rem] font-black leading-[1.05] tracking-tighter text-primary mb-2">
+          <h2 className="text-[2.75rem] font-black leading-[1.05] tracking-tighter text-error mb-2">
             You missed<br />your stop.
           </h2>
           <p className="text-[1rem] text-on-surface-variant font-medium">
@@ -118,15 +113,12 @@ export default function MissedPage() {
 
         {/* Map */}
         {lat && lng && (
-          <div className="h-44 w-full bg-surface-container rounded-2xl overflow-hidden relative flex-shrink-0">
+          <div className="h-44 w-full bg-surface-container rounded-2xl overflow-hidden relative flex-shrink-0 border border-error/20">
             <img
-              src={`https://maps.googleapis.com/maps/api/staticmap?size=800x400&scale=2&zoom=15&markers=color:0xba1a1a|size:mid|${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`}
+              src={`https://maps.googleapis.com/maps/api/staticmap?size=800x400&scale=2&zoom=15&markers=color:red|size:mid|${lat},${lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`}
               alt="Your current location"
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-6 h-6 bg-error rounded-full border-3 border-white shadow-lg" />
-            </div>
           </div>
         )}
 
@@ -137,10 +129,9 @@ export default function MissedPage() {
               How to get back to {destination.name}
             </p>
 
-            {/* ETA summary */}
             <div className="rounded-2xl bg-surface-container p-4 flex items-center gap-4 mb-2">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-primary" style={{ fontSize: '20px', fontVariationSettings: "'FILL' 1" }}>
+              <div className="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-error" style={{ fontSize: '20px', fontVariationSettings: "'FILL' 1" }}>
                   directions_transit
                 </span>
               </div>
@@ -149,10 +140,9 @@ export default function MissedPage() {
               </p>
             </div>
 
-            {/* WeGo route options */}
             {rerouteLoading && (
               <div className="flex items-center gap-3 text-on-surface-variant text-[0.875rem] mt-2">
-                <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin flex-shrink-0" />
+                <div className="w-4 h-4 rounded-full border-2 border-error border-t-transparent animate-spin flex-shrink-0" />
                 Finding bus routes…
               </div>
             )}
@@ -171,7 +161,7 @@ export default function MissedPage() {
                     key={route.routeName}
                     className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-surface-container"
                   >
-                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-error flex items-center justify-center flex-shrink-0">
                       <span className="text-white font-black text-[0.9375rem]">{route.routeName}</span>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -180,7 +170,7 @@ export default function MissedPage() {
                       </p>
                       <p className="text-[0.8125rem] text-on-surface-variant mt-0.5">{walkLabel} to stop</p>
                     </div>
-                    <span className="material-symbols-outlined text-primary flex-shrink-0" style={{ fontSize: '20px', fontVariationSettings: "'FILL' 1" }}>
+                    <span className="material-symbols-outlined text-error flex-shrink-0" style={{ fontSize: '20px', fontVariationSettings: "'FILL' 1" }}>
                       directions_bus
                     </span>
                   </div>
@@ -198,7 +188,7 @@ export default function MissedPage() {
 
           {spotsLoading && (
             <div className="flex items-center gap-3 text-on-surface-variant text-[0.875rem]">
-              <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin flex-shrink-0" />
+              <div className="w-4 h-4 rounded-full border-2 border-error border-t-transparent animate-spin flex-shrink-0" />
               Finding open places…
             </div>
           )}
@@ -213,7 +203,6 @@ export default function MissedPage() {
               const distLabel = place.distanceM >= 1000
                 ? `${(place.distanceM / 1000).toFixed(1)} km`
                 : `${place.distanceM} m`
-              const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${place.lat},${place.lng}`
 
               return (
                 <a
@@ -233,7 +222,7 @@ export default function MissedPage() {
                     <p className="text-[0.8125rem] text-on-surface-variant mt-0.5 truncate">{place.address}</p>
                   </div>
                   <div className="flex-shrink-0 text-right">
-                    <p className="text-[0.8125rem] font-bold text-primary">{distLabel}</p>
+                    <p className="text-[0.8125rem] font-bold text-error">{distLabel}</p>
                     <p className="text-[0.625rem] text-secondary font-bold uppercase tracking-wider">Open</p>
                   </div>
                 </a>
@@ -245,10 +234,10 @@ export default function MissedPage() {
       </main>
 
       {/* Fixed bottom CTA */}
-      <div className="fixed bottom-0 left-0 w-full max-w-[430px] left-1/2 -translate-x-1/2 px-8 pb-12 pt-4 bg-white/90 backdrop-blur-xl space-y-2">
+      <div className="fixed bottom-0 left-0 w-full max-w-[430px] left-1/2 -translate-x-1/2 px-8 pb-12 pt-4 bg-surface-container-lowest/95 backdrop-blur-xl space-y-2 border-t border-error/10">
         <button
           onClick={confirmSafe}
-          className="w-full h-[56px] bg-primary text-white rounded-full font-bold text-[1rem] active:scale-[0.97] transition-all flex items-center justify-center gap-2"
+          className="w-full h-[56px] bg-error text-white rounded-full font-bold text-[1rem] active:scale-[0.97] transition-all flex items-center justify-center gap-2"
         >
           <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
           I am safe — stop broadcasting

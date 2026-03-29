@@ -150,7 +150,7 @@ export default function ContactsPage() {
     <div className="bg-surface-container-lowest text-on-surface min-h-dvh flex flex-col max-w-[430px] mx-auto">
 
       {/* Header */}
-      <header className="fixed top-0 w-full max-w-[430px] z-50 bg-white/80 backdrop-blur-xl">
+      <header className="fixed top-0 w-full max-w-[430px] z-50 bg-surface-container-lowest/95 backdrop-blur-sm">
         <nav className="flex items-center gap-3 px-8 py-5">
           <Link href="/settings" className="p-1 active:scale-90 transition-transform">
             <span className="material-symbols-outlined text-primary" style={{ fontSize: '22px' }}>arrow_back</span>
@@ -170,14 +170,16 @@ export default function ContactsPage() {
 
         {/* Your name */}
         <section className="mb-10">
-          <label className="block text-[0.75rem] font-bold uppercase tracking-[0.05em] text-on-surface mb-3">Your Name</label>
-          <input
-            type="text"
-            value={userName}
-            onChange={e => setUserName(e.target.value)}
-            placeholder="e.g. Maria"
-            className="w-full bg-transparent border-0 border-b border-outline-variant py-3 text-[1.25rem] font-bold focus:outline-none focus:border-primary placeholder:text-outline-variant/50 placeholder:font-normal transition-colors"
-          />
+          <label className="block text-[0.75rem] font-bold uppercase tracking-[0.05em] text-on-surface-variant mb-3">Your Name</label>
+          <div className="bg-surface-container rounded-2xl px-4 py-1">
+            <input
+              type="text"
+              value={userName}
+              onChange={e => setUserName(e.target.value)}
+              placeholder="e.g. Maria"
+              className="w-full bg-transparent py-3 text-[1.125rem] font-bold focus:outline-none placeholder:text-outline-variant/50 placeholder:font-normal"
+            />
+          </div>
         </section>
 
         {/* Contacts */}
@@ -204,25 +206,25 @@ export default function ContactsPage() {
                 )}
               </div>
 
-              <div className="space-y-5">
-                <div>
-                  <label className="block text-[0.625rem] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Name</label>
+              <div className="space-y-3">
+                <div className="bg-surface-container rounded-2xl px-4 py-1">
+                  <label className="block text-[0.625rem] font-bold uppercase tracking-widest text-on-surface-variant pt-2.5">Name</label>
                   <input
                     type="text"
                     value={c.name}
                     onChange={e => update(idx, 'name', e.target.value)}
                     placeholder="Full name"
-                    className="w-full bg-transparent border-0 border-b border-outline-variant py-2.5 text-[1.125rem] font-bold focus:outline-none focus:border-primary placeholder:text-outline-variant/50 placeholder:font-normal transition-colors"
+                    className="w-full bg-transparent py-2 text-[1.0625rem] font-bold focus:outline-none placeholder:text-outline-variant/50 placeholder:font-normal pb-3"
                   />
                 </div>
-                <div>
-                  <label className="block text-[0.625rem] font-bold uppercase tracking-widest text-on-surface-variant mb-2">Phone</label>
+                <div className="bg-surface-container rounded-2xl px-4 py-1">
+                  <label className="block text-[0.625rem] font-bold uppercase tracking-widest text-on-surface-variant pt-2.5">Phone</label>
                   <input
                     type="tel"
                     value={c.phone}
                     onChange={e => update(idx, 'phone', e.target.value)}
                     placeholder="+1 615 000 0000"
-                    className="w-full bg-transparent border-0 border-b border-outline-variant py-2.5 text-[1.125rem] font-bold focus:outline-none focus:border-primary placeholder:text-outline-variant/50 placeholder:font-normal transition-colors"
+                    className="w-full bg-transparent py-2 text-[1.0625rem] font-bold focus:outline-none placeholder:text-outline-variant/50 placeholder:font-normal pb-3"
                   />
                 </div>
 
@@ -366,7 +368,7 @@ export default function ContactsPage() {
       </main>
 
       {/* Fixed bottom */}
-      <div className="fixed bottom-0 left-0 w-full max-w-[430px] left-1/2 -translate-x-1/2 px-8 pb-12 pt-4 space-y-3 bg-white/90 backdrop-blur-xl">
+      <div className="fixed bottom-0 left-0 w-full max-w-[430px] left-1/2 -translate-x-1/2 px-8 pb-12 pt-4 space-y-3 bg-surface-container-lowest/95 backdrop-blur-sm border-t border-outline-variant/20">
         <button
           onClick={handleTestSMS}
           disabled={testing || !filled.length}

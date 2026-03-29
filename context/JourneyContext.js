@@ -3,19 +3,21 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { haversine } from '@/lib/haversine'
+import { useJourneyStateStorage } from '@/hooks/useJourneyStateStorage'
+import { useOfflineTracking } from '@/hooks/useOfflineTracking'
+
 
 export const JOURNEY_STATE = {
   IDLE: 'IDLE',
   MONITORING: 'MONITORING',
   PHASE_1: 'PHASE_1',   // 1000m — gentle warning
-  PHASE_2: 'PHASE_2',   // 200m  — full alarm + countdown
-  MISSED: 'MISSED',     // ignored alarm / passed stop
   TRANSFER: 'TRANSFER', // completed a leg, waiting to board next
+  ARRIVED: 'ARRIVED',   // reached final destination
+  SAFE_TRIP: 'SAFE_TRIP', // 90 seconds after ARRIVED, ready for plan another journey
+  MISSED: 'MISSED',     // ignored alarm / passed stop
 }
 
-const PHASE_1_METERS = 1000
-const PHASE_2_METERS = 200
-const PHASE_2_COUNTDOWN_SECS = 60
+const PHASE_2_METERS = 600
 const MISSED_OVERSHOOT_METERS = 500
 
 const JourneyContext = createContext(null)
@@ -27,7 +29,6 @@ export function JourneyProvider({ children }) {
   const [destination, setDestination] = useState(null)
   const [position, setPosition] = useState(null)
   const [distanceToStop, setDistanceToStop] = useState(null)
-  const [countdown, setCountdown] = useState(PHASE_2_COUNTDOWN_SECS)
   const [contacts, setContacts] = useState([])
   const [userName, setUserName] = useState('User')
   const [smsSent, setSmsSent] = useState(false)
@@ -42,8 +43,10 @@ export function JourneyProvider({ children }) {
   const [etaMinutes, setEtaMinutes] = useState(null)
   const [apiDistance, setApiDistance] = useState(null)
   const [routeSteps, setRouteSteps] = useState([])
+  const [routeNumber, setRouteNumber] = useState('')
 
   const watchIdRef = useRef(null)
+  const routeStepsRef = useRef([])
   const countdownRef = useRef(null)
   const audioCtxRef = useRef(null)
   const beepTimeoutRef = useRef(null)
@@ -62,24 +65,38 @@ export function JourneyProvider({ children }) {
 
   useEffect(() => { stateRef.current = state }, [state])
   useEffect(() => { pendingLegsRef.current = pendingLegs }, [pendingLegs])
+  useEffect(() => { routeStepsRef.current = routeSteps }, [routeSteps])
 
-  // Load contacts + username
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      const saved = localStorage.getItem('nudge_contacts')
-      if (saved) setContacts(JSON.parse(saved))
-      const savedName = localStorage.getItem('nudge_username')
-      if (savedName) setUserName(savedName)
-    } catch {}
-  }, [])
+  // Handles all localStorage/sessionStorage sync for the journey state
+  useJourneyStateStorage({
+    state,
+    destination,
+    pendingLegs,
+    currentLegIndex,
+    totalLegs,
+    routeSteps,
+    routeNumber,
+    watchToken,
+    setState,
+    setDestination,
+    setPendingLegs,
+    setCurrentLegIndex,
+    setTotalLegs,
+    setRouteSteps,
+    setRouteNumber,
+    setWatchToken,
+    setContacts,
+    setUserName,
+    JOURNEY_STATE
+  })
 
   // ── GPS TRACKING ───────────────────────────────────────────────────
   useEffect(() => {
     const active = [
       JOURNEY_STATE.MONITORING,
       JOURNEY_STATE.PHASE_1,
-      JOURNEY_STATE.PHASE_2,
+      JOURNEY_STATE.ARRIVED,
+      JOURNEY_STATE.TRANSFER,
       JOURNEY_STATE.MISSED,
     ].includes(state)
 
@@ -109,16 +126,18 @@ export function JourneyProvider({ children }) {
     if (dist < minDistRef.current) minDistRef.current = dist
 
     const cur = stateRef.current
-    if (cur === JOURNEY_STATE.IDLE || cur === JOURNEY_STATE.MISSED) return
+    if (cur === JOURNEY_STATE.IDLE || cur === JOURNEY_STATE.MISSED || cur === JOURNEY_STATE.ARRIVED || cur === JOURNEY_STATE.SAFE_TRIP) return
 
     if (minDistRef.current < PHASE_2_METERS && dist > minDistRef.current + MISSED_OVERSHOOT_METERS) {
       triggerMissed()
       return
     }
     
-    // Trigger Phase 1 "Are you awake?" EXACTLY at 5 minutes remaining based purely on Google API
-    const phase1Ready = (etaMinutes !== null && etaMinutes <= 5)
-    
+    // ETA-based Phase 1 only fires when no GTFS stops are loaded —
+    // when stops ARE loaded, penultimate stop detection handles Phase 1 instead.
+    const hasStops = routeStepsRef.current.length >= 2
+    const phase1Ready = !hasStops && (etaMinutes !== null && etaMinutes <= 5)
+
     if (cur === JOURNEY_STATE.MONITORING && phase1Ready) {
       if (Date.now() >= phase1CooldownRef.current) {
         phase1CooldownRef.current = 0
@@ -128,23 +147,6 @@ export function JourneyProvider({ children }) {
       triggerPhase2()
     }
   }, [position, destination, etaMinutes, simMode])
-
-  // ── PHASE 2 COUNTDOWN ──────────────────────────────────────────────
-  useEffect(() => {
-    if (state !== JOURNEY_STATE.PHASE_2) return
-    setCountdown(PHASE_2_COUNTDOWN_SECS)
-    countdownRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownRef.current)
-          triggerMissed()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-    return () => clearInterval(countdownRef.current)
-  }, [state])
 
   // ── SIMULATION: reset distance only when sim first turns on ────────
   useEffect(() => {
@@ -163,7 +165,7 @@ export function JourneyProvider({ children }) {
     const active = [
       JOURNEY_STATE.MONITORING,
       JOURNEY_STATE.PHASE_1,
-      JOURNEY_STATE.PHASE_2,
+      JOURNEY_STATE.ARRIVED,
     ].includes(state)
     if (!active) {
       clearInterval(simIntervalRef.current)
@@ -189,8 +191,9 @@ export function JourneyProvider({ children }) {
         return
       }
       
-      // Only try Phase 1 from MONITORING with cooldown check (Strictly > 5 minutes API logic)
-      if (cur === JOURNEY_STATE.MONITORING && simulatedEta <= 5) {
+      // ETA-based Phase 1 fallback — only when no GTFS stops loaded
+      const hasStops = routeStepsRef.current.length >= 2
+      if (!hasStops && cur === JOURNEY_STATE.MONITORING && simulatedEta <= 5) {
         if (Date.now() >= phase1CooldownRef.current) {
           phase1CooldownRef.current = 0
           triggerPhase1()
@@ -344,11 +347,43 @@ export function JourneyProvider({ children }) {
   }, [playAlarm])
 
   const triggerPhase2 = useCallback(() => {
-    setState(JOURNEY_STATE.PHASE_2)
-    // No alarm — Phase 1 (penultimate stop) is the wake-up alarm.
-    // Phase 2 is a silent arrival confirmation.
+    stopAlarm()
+    setAtPenultimateStop(false)
     navigator.vibrate?.([100, 50, 100])
-  }, [])
+
+    const isTransfer = currentLegIndex < totalLegs - 1
+    
+    if (isTransfer) {
+      setState(JOURNEY_STATE.TRANSFER)
+      router.push('/journey/transfer')
+    } else {
+      setState(JOURNEY_STATE.ARRIVED)
+      // Log completed journey for history UI
+      const primaryLine = routeSteps?.[0]?.line || routeNumber || 'transit'
+      try {
+        const h = JSON.parse(localStorage.getItem('nudge_journeyHistory') || '[]')
+        h.unshift({
+          date: new Date().toISOString(),
+          to: destination?.name ?? 'Destination',
+          route: primaryLine
+        })
+        localStorage.setItem('nudge_journeyHistory', JSON.stringify(h.slice(0, 20)))
+      } catch (e) {}
+
+      // Clean up the GPS wake lock
+      releaseWakeLock()
+
+      // Show Phase 1 text unconditionally (it just changes to Phase 2 text gracefully),
+      // then snap to the final screen. 5s for demo, 90s for real-world padding.
+      setTimeout(() => {
+        // Assume safe automatically when they get off the final bus
+        const stopName = destination?.name ?? 'your destination'
+        sendSafeArrivalSMS(stopName)
+        sendPushNotify('safe', { stopName })
+        setState(JOURNEY_STATE.SAFE_TRIP)
+      }, simMode ? 5000 : 90000)
+    }
+  }, [currentLegIndex, totalLegs, simMode, router, destination, sendSafeArrivalSMS, sendPushNotify, routeNumber, routeSteps, stopAlarm])
 
   const triggerMissed = useCallback(async () => {
     setState(JOURNEY_STATE.MISSED)
@@ -381,7 +416,7 @@ export function JourneyProvider({ children }) {
    * @param {object} dest - destination object
    * @param {object[]} extraLegs - additional legs after the first
    */
-  const startJourney = useCallback((dest, extraLegs = []) => {
+  const startJourney = useCallback((dest, extraLegs = [], initialRouteSteps = [], primaryLine = '') => {
     const savedContacts = (() => {
       try { return JSON.parse(localStorage.getItem('nudge_contacts') || '[]') } catch { return [] }
     })()
@@ -407,7 +442,8 @@ export function JourneyProvider({ children }) {
     setSmsSent(false)
     setEtaMinutes(null)
     setApiDistance(null)
-    setRouteSteps([])
+    setRouteSteps(initialRouteSteps)
+    setRouteNumber(primaryLine)
     lastEtaFetchRef.current = 0
     lastEtaPositionRef.current = null
     minDistRef.current = Infinity
@@ -528,89 +564,54 @@ export function JourneyProvider({ children }) {
   }, [router, contacts, destination, sendSafeArrivalSMS, sendPushNotify])
 
   /**
-   * Called when the Phase 2 puzzle is solved.
-   * If there are more legs, go to transfer screen; otherwise go to safe screen.
-   */
-  const completeCurrentLeg = useCallback(() => {
-    stopAlarm()
-    navigator.vibrate?.(0)
-    clearInterval(countdownRef.current)
-    clearInterval(simIntervalRef.current)
-    if (pendingLegsRef.current.length > 0) {
-      releaseWakeLock()
-      setState(JOURNEY_STATE.TRANSFER)
-      router.push('/journey/transfer')
-    } else {
-      const stopName = destination?.name ?? null
-      sendSafeArrivalSMS(stopName)
-      sendPushNotify('safe', { stopName })
-      releaseWakeLock()
-      const contactName = contacts[0]?.name ?? null
-      setState(JOURNEY_STATE.IDLE)
-      setDestination(null)
-      setDistanceToStop(null)
-      setSmsSent(false)
-      minDistRef.current = Infinity
-      phase1CooldownRef.current = 0
-      setSimMode(false)
-      const qs = contactName ? `?contact=${encodeURIComponent(contactName)}` : ''
-      router.push(`/safe${qs}`)
-    }
-  }, [stopAlarm, contacts, router, destination, sendSafeArrivalSMS, sendPushNotify])
-
-  /**
    * Board the next leg of a multi-leg journey.
    */
   const boardNextLeg = useCallback(() => {
     const legs = pendingLegsRef.current
     if (!legs.length) return
+    stopAlarm()
     const [nextLeg, ...rest] = legs
     setPendingLegs(rest)
     pendingLegsRef.current = rest
     setDestination(nextLeg)
     setCurrentLegIndex(prev => prev + 1)
     setSmsSent(false)
+    setAtPenultimateStop(false)
     minDistRef.current = Infinity
     simDistanceRef.current = 3000
     phase1CooldownRef.current = 0
+    
+    // Load next route's offline tracked stops if available
+    setRouteSteps(nextLeg.stopSequence || [])
+    if (nextLeg.line) setRouteNumber(nextLeg.line)
+
     setState(JOURNEY_STATE.MONITORING)
     acquireWakeLock()
     router.push('/journey/active')
-  }, [router])
+  }, [router, stopAlarm])
 
   const toggleSimMode = useCallback(() => setSimMode((prev) => !prev), [])
 
-  // ── ROUTES API ETA (throttled: every 45s or >30m movement) ──────────
-  useEffect(() => {
-    if (!position || !destination?.lat) return
-    const now = Date.now()
-    const last = lastEtaPositionRef.current
-    const movedEnough = !last ||
-      haversine(position.lat, position.lng, last.lat, last.lng) > 30
-    const enoughTime = now - lastEtaFetchRef.current > 45_000
-    if (!movedEnough && !enoughTime) return
-
-    lastEtaFetchRef.current = now
-    lastEtaPositionRef.current = position
-
-    fetch('/api/eta', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        originLat: position.lat,
-        originLng: position.lng,
-        destLat: destination.lat,
-        destLng: destination.lng,
-      }),
-    })
-      .then(r => r.json())
-      .then(data => { 
-        if (data.durationMinutes) setEtaMinutes(data.durationMinutes) 
-        if (data.distanceMeters) setApiDistance(data.distanceMeters)
-        if (data.routeSteps) setRouteSteps(data.routeSteps) 
-      })
-      .catch(() => {})
-  }, [position, destination, simMode])
+  // ── OFFLINE GPS TRACKING (no network after boarding) ─────────────────
+  // Uses GTFS stop sequence when available; falls back to pure Haversine
+  useOfflineTracking({
+    position,
+    destination,
+    routeStops: routeSteps,   // GTFS stop sequence stored from route selection
+    routeNumber,
+    simMode,
+    journeyState: state,
+    IDLE_STATE: JOURNEY_STATE.IDLE,
+    MONITORING_STATE: JOURNEY_STATE.MONITORING,
+    PHASE_1_STATE: JOURNEY_STATE.PHASE_1,
+    setEtaMinutes,
+    setApiDistance,
+    triggerPhase1,
+    triggerPhase2,
+    setPenultimateReached,
+    phase1CooldownRef,
+    stateRef,
+  })
 
   // ── WATCH STATE PUBLISHER ──────────────────────────────────────────
   useEffect(() => {
@@ -648,7 +649,6 @@ export function JourneyProvider({ children }) {
       apiDistance,
       etaMinutes,
       routeSteps,
-      countdown,
       contacts,
       userName,
       smsSent,
@@ -667,10 +667,10 @@ export function JourneyProvider({ children }) {
       triggerMissed,
       atPenultimateStop,
       setPenultimateReached,
-      completeCurrentLeg,
       boardNextLeg,
       setContacts,
       setUserName,
+      setSimMode,
     }}>
       {children}
     </JourneyContext.Provider>
