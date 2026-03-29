@@ -150,14 +150,26 @@ export default function ContactsPage() {
     <div className="bg-surface-container-lowest text-on-surface min-h-dvh flex flex-col max-w-[430px] mx-auto">
 
       {/* Header */}
-      <header className="fixed top-0 w-full max-w-[430px] z-50 bg-surface-container-lowest/95 backdrop-blur-sm">
-        <nav className="flex items-center gap-3 px-8 py-5">
-          <Link href="/" className="text-[0.8125rem] font-bold text-primary active:opacity-60 transition-opacity">
-            Home
-          </Link>
-          <span className="font-black text-xl tracking-tighter text-primary uppercase">Nudge</span>
-        </nav>
-      </header>
+      {/* Header */}
+            <nav className="flex items-center justify-between px-6 pt-12 pb-3 bg-surface-container-lowest">
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/"
+                  className="flex items-center gap-1 text-[0.8125rem] font-bold text-primary active:opacity-60 transition-opacity"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_back_ios</span>
+                  Home
+                </Link>
+              </div>
+              <Link href="/settings">
+                <span
+                  className="material-symbols-outlined text-on-surface-variant"
+                  style={{ fontSize: '20px' }}
+                >
+                  person
+                </span>
+              </Link>
+            </nav>
 
       <main className="flex-1 pt-28 px-8 pb-40">
 

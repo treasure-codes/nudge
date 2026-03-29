@@ -1,6 +1,21 @@
 import { NextResponse } from 'next/server'
 import { loadGtfs } from '@/lib/wegoGtfs'
 
+// Convert GTFS "HH:MM:SS" (may exceed 24h) to minutes since midnight today
+function gtfsTimeToDate(timeStr) {
+  if (!timeStr) return null
+  const [h, m] = timeStr.split(':').map(Number)
+  if (isNaN(h) || isNaN(m)) return null
+  const d = new Date()
+  d.setHours(h, m, 0, 0)
+  return d
+}
+
+function formatTime(date) {
+  if (!date) return null
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
 function metersBetween(lat1, lng1, lat2, lng2) {
   const R = 6371e3
   const r = Math.PI / 180
@@ -47,12 +62,13 @@ export async function GET(req) {
     const boardIds = new Set(boardCandidates.map(s => s.id))
     const alightIds = new Set(alightCandidates.map(s => s.id))
 
-    // routeName → { routeName, boardStopName, boardStopId, walkMeters }
+    // routeName → { routeName, boardStopName, boardStopId, walkMeters, nextDeparture }
     const found = {}
+    const now = new Date()
 
     for (const [tripId, stopList] of Object.entries(tripStops)) {
       const routeName = tripRoute[tripId]
-      if (!routeName || found[routeName]) continue
+      if (!routeName) continue
 
       // Find first board stop in this trip
       let boardIdx = -1
@@ -70,12 +86,35 @@ export async function GET(req) {
 
       const boardStopId = stopList[boardIdx].stop_id
       const boardStop = stops[boardStopId]
-      found[routeName] = {
-        routeName,
-        boardStopName: boardStop.name,
-        boardStopId,
-        walkMeters: Math.round(metersBetween(userLat, userLng, boardStop.lat, boardStop.lng)),
+      const depTime = gtfsTimeToDate(stopList[boardIdx].departure_time)
+
+      // Keep the soonest future departure per route
+      if (!found[routeName]) {
+        found[routeName] = {
+          routeName,
+          boardStopName: boardStop.name,
+          boardStopId,
+          walkMeters: Math.round(metersBetween(userLat, userLng, boardStop.lat, boardStop.lng)),
+          nextDeparture: depTime && depTime > now ? depTime : null,
+        }
+      } else if (depTime && depTime > now) {
+        const existing = found[routeName].nextDeparture
+        if (!existing || depTime < existing) {
+          found[routeName].nextDeparture = depTime
+        }
       }
+    }
+
+    // Stringify departure times before serialising
+    for (const r of Object.values(found)) {
+      if (r.nextDeparture) {
+        r.departureTimeText = formatTime(r.nextDeparture)
+        r.nextDepartureMinutes = Math.max(0, Math.round((r.nextDeparture - now) / 60000))
+      } else {
+        r.departureTimeText = null
+        r.nextDepartureMinutes = null
+      }
+      delete r.nextDeparture
     }
 
     const routes = Object.values(found)
