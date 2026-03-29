@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useJourney } from '@/context/JourneyContext'
 
@@ -30,13 +31,28 @@ function minutesUntil(timeText) {
 
 function SetJourneyContent() {
   const { startJourney, setSimMode } = useJourney()
+  const searchParams = useSearchParams()
 
-  const [legs, setLegs] = useState([])
+  const [legs, setLegs] = useState(() => {
+    // Pre-fill destination from query params (e.g. coming from missed page)
+    const name = searchParams.get('destName')
+    const lat = parseFloat(searchParams.get('destLat'))
+    const lng = parseFloat(searchParams.get('destLng'))
+    if (name && !isNaN(lat) && !isNaN(lng)) {
+      return [{ id: `prefill-${lat}-${lng}`, name, address: '', lat, lng }]
+    }
+    return []
+  })
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [loadingPlace, setLoadingPlace] = useState(false)
-  const [isAddingStop, setIsAddingStop] = useState(true)
+  const [isAddingStop, setIsAddingStop] = useState(() => {
+    const name = searchParams.get('destName')
+    const lat = parseFloat(searchParams.get('destLat'))
+    const lng = parseFloat(searchParams.get('destLng'))
+    return !(name && !isNaN(lat) && !isNaN(lng))
+  })
   const debounceRef = useRef(null)
 
   const [routeOptions, setRouteOptions] = useState(null)

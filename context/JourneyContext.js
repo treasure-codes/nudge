@@ -452,6 +452,17 @@ export function JourneyProvider({ children }) {
     setState(JOURNEY_STATE.MONITORING)
     acquireWakeLock()
 
+    // Pre-fetch reroute options while connection is good — cache for missed screen
+    const finalDest = extraLegs.length ? extraLegs[extraLegs.length - 1] : dest
+    if (finalDest?.lat && finalDest?.lng && dest?.lat && dest?.lng) {
+      fetch(`/api/wego-reroute?userLat=${dest.lat}&userLng=${dest.lng}&destLat=${finalDest.lat}&destLng=${finalDest.lng}`)
+        .then(r => r.json())
+        .then(d => {
+          try { sessionStorage.setItem('nudge_reroute', JSON.stringify(d.routes ?? [])) } catch {}
+        })
+        .catch(() => {})
+    }
+
     // Send watch link SMS + Telegram to primary contact
     if (token) {
       const watchUrl = `${window.location.origin}/watch/${token}`
