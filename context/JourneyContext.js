@@ -174,23 +174,26 @@ export function JourneyProvider({ children }) {
 
     clearInterval(simIntervalRef.current)
     simIntervalRef.current = setInterval(() => {
+      const cur = stateRef.current
+      if (cur === JOURNEY_STATE.MISSED || cur === JOURNEY_STATE.IDLE) {
+        clearInterval(simIntervalRef.current)
+        return
+      }
+
+      // Pause countdown while alarm is ringing — let the user decide to board or miss
+      if (cur === JOURNEY_STATE.PHASE_1) return
+
       // Simulate fast physical movement
       simDistanceRef.current = Math.max(0, simDistanceRef.current - 60)
       const dist = simDistanceRef.current
       setDistanceToStop(dist)
-      
+
       // Simulate a ticking Google API ETA: 200m per minute
       const simulatedEta = Math.ceil(dist / 200)
       setEtaMinutes(simulatedEta)
 
       if (dist < minDistRef.current) minDistRef.current = dist
 
-      const cur = stateRef.current
-      if (cur === JOURNEY_STATE.MISSED || cur === JOURNEY_STATE.IDLE) {
-        clearInterval(simIntervalRef.current)
-        return
-      }
-      
       // ETA-based Phase 1 fallback — only when no GTFS stops loaded
       const hasStops = routeStepsRef.current.length >= 2
       if (!hasStops && cur === JOURNEY_STATE.MONITORING && simulatedEta <= 5) {
@@ -198,10 +201,7 @@ export function JourneyProvider({ children }) {
           phase1CooldownRef.current = 0
           triggerPhase1()
         }
-      } else if (
-        (cur === JOURNEY_STATE.MONITORING || cur === JOURNEY_STATE.PHASE_1) &&
-        dist <= PHASE_2_METERS
-      ) {
+      } else if (cur === JOURNEY_STATE.MONITORING && dist <= PHASE_2_METERS) {
         triggerPhase2()
       }
     }, 500)

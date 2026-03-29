@@ -9,7 +9,19 @@
       "Bash(node -e \"const fs = require\\(''fs''\\); const tw = fs.readFileSync\\(''c:/Users/danie/Desktop/Dev/hackathons/nudge/tailwind.config.js'',''utf8''\\); console.log\\(''shake keyframe:'', tw.includes\\(\"\"''shake''\"\"\\)\\); console.log\\(''animate-shake:'', tw.includes\\(\"\"''shake'': ''shake\"\"\\)\\);\")",
       "Bash(node -e \"const fs = require\\(''fs''\\); const tw = fs.readFileSync\\(''c:/Users/danie/Desktop/Dev/hackathons/nudge/tailwind.config.js'',''utf8''\\); const anim = tw.slice\\(tw.indexOf\\(''animation:''\\)\\); console.log\\(anim.slice\\(0, 400\\)\\);\")",
       "Bash(npx tsc:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "WebSearch",
+      "WebFetch(domain:www.ycombinator.com)",
+      "WebFetch(domain:solve.mit.edu)",
+      "WebFetch(domain:bigthink.com)",
+      "WebFetch(domain:acumenacademy.org)",
+      "WebFetch(domain:blog.acumenacademy.org)",
+      "WebFetch(domain:pmc.ncbi.nlm.nih.gov)",
+      "WebFetch(domain:www.ohack.dev)",
+      "WebFetch(domain:dotspresentations.com)",
+      "WebFetch(domain:www.maxwell.syr.edu)",
+      "WebFetch(domain:www.seckington.com)",
+      "WebFetch(domain:fastercapital.com)"
     ]
   }
 }

@@ -43,6 +43,7 @@ function SetJourneyContent() {
   const [selectedRoute, setSelectedRoute] = useState(null)
   const [expandedRoute, setExpandedRoute] = useState(null)
   const [fetchingRoutes, setFetchingRoutes] = useState(false)
+  const [routeError, setRouteError] = useState(null)
 
   useEffect(() => {
     setResults([])
@@ -107,15 +108,29 @@ function SetJourneyContent() {
 
   const handleStartJourney = async () => {
     if (!canStart) return
+    setRouteError(null)
     setFetchingRoutes(true)
+    let pos = null
     try {
-      const pos = await new Promise((resolve, reject) =>
+      pos = await new Promise((resolve, reject) =>
         navigator.geolocation.getCurrentPosition(
           p => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
           reject,
           { timeout: 8000, enableHighAccuracy: false }
         )
       )
+    } catch (geoErr) {
+      const code = geoErr?.code
+      if (code === 1) {
+        setRouteError('Location access was denied. Enable it in your browser settings, or tap "Start without route" below.')
+      } else {
+        setRouteError('Could not get your location. Tap "Start without route" to continue anyway.')
+      }
+      setFetchingRoutes(false)
+      return
+    }
+
+    try {
       const res = await fetch('/api/transit-routes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -130,10 +145,10 @@ function SetJourneyContent() {
       if (data.routes?.length) {
         setRouteOptions(data.routes)
       } else {
-        startJourney(legs[0], legs.slice(1))
+        setRouteError('No transit routes found. Tap "Start without route" to continue anyway.')
       }
     } catch {
-      startJourney(legs[0], legs.slice(1))
+      setRouteError('Could not find routes. Tap "Start without route" to continue anyway.')
     } finally {
       setFetchingRoutes(false)
     }
@@ -168,13 +183,11 @@ function SetJourneyContent() {
         <div className="flex items-center gap-2">
           <Link
             href="/"
-            className="text-[0.8125rem] font-bold text-primary active:opacity-60 transition-opacity"
+            className="flex items-center gap-1 text-[0.8125rem] font-bold text-primary active:opacity-60 transition-opacity"
           >
+            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>arrow_back_ios</span>
             Home
           </Link>
-          <span className="font-black text-primary text-xl tracking-tighter">
-            Nudge
-          </span>
         </div>
         <Link href="/settings">
           <span
@@ -347,7 +360,7 @@ function SetJourneyContent() {
 
                 {query.trim().length >= 2 && !searching && results.length === 0 && (
                   <p className="text-[0.8125rem] text-on-surface-variant mt-2.5">
-                    No places found — try a landmark or street name.
+                    keep typing, no location matches this
                   </p>
                 )}
               </div>
@@ -376,8 +389,19 @@ function SetJourneyContent() {
 
       {/* Fixed CTA */}
       <div className="fixed bottom-0 left-0 w-full max-w-[430px] left-1/2 -translate-x-1/2 px-6 pb-10 pt-5 bg-surface-container-lowest/95 backdrop-blur-sm border-t border-outline-variant/20">
+        {routeError && (
+          <div className="mb-3 space-y-2">
+            <p className="text-[0.8125rem] text-error font-medium text-center">{routeError}</p>
+            <button
+              onClick={() => { setRouteError(null); startJourney(legs[0], legs.slice(1)) }}
+              className="w-full text-center text-[0.8125rem] font-bold text-on-surface-variant py-1.5 active:opacity-60 transition-opacity"
+            >
+              Start without route →
+            </button>
+          </div>
+        )}
         <button
-          onClick={handleStartJourney}
+          onClick={() => { setRouteError(null); handleStartJourney() }}
           disabled={!canStart || fetchingRoutes}
           className="w-full h-[52px] rounded-full bg-primary text-white font-bold text-[1.0625rem] tracking-tight active:scale-[0.97] transition-all disabled:opacity-25 shadow-[0_8px_32px_rgba(0,0,0,0.1)]"
         >
@@ -386,8 +410,8 @@ function SetJourneyContent() {
             : loadingPlace
               ? 'Getting location…'
               : legs.length > 1
-                ? `Start ${legs.length}-stop Journey`
-                : 'Start Journey'}
+                ? `Start ${legs.length}-stop Trip`
+                : 'Start Trip'}
         </button>
       </div>
 
@@ -395,15 +419,20 @@ function SetJourneyContent() {
       {/* Route picker bottom sheet */}
       {routeOptions !== null && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end max-w-[430px] mx-auto">
-          <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setRouteOptions(null)}
-          />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
 
           <div className="relative bg-surface-container-lowest rounded-t-3xl px-5 pt-4 pb-8 shadow-2xl max-h-[88dvh] overflow-y-auto">
 
-            {/* Handle */}
-            <div className="w-9 h-1 rounded-full bg-outline-variant/50 mx-auto mb-4" />
+            {/* Handle + dismiss */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-9 h-1 rounded-full bg-outline-variant/50" />
+              <button
+                onClick={() => setRouteOptions(null)}
+                className="p-1 active:scale-90 transition-transform"
+              >
+                <span className="material-symbols-outlined text-on-surface-variant" style={{ fontSize: '20px' }}>close</span>
+              </button>
+            </div>
 
             <h2 className="text-[1.25rem] font-black tracking-tighter text-primary mb-1">
               Choose your route
@@ -652,7 +681,7 @@ function SetJourneyContent() {
               className="w-full flex items-center justify-center gap-1.5 text-center text-[0.8125rem] text-primary font-bold py-2 active:scale-95 transition-transform disabled:opacity-30 disabled:active:scale-100"
             >
               <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>
-                science
+                play_arrow
               </span>
               Sim route for demonstration
             </button>

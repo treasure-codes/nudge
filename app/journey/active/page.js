@@ -104,8 +104,7 @@ function MonitoringScreen({
     <div className="bg-surface-container-lowest text-on-surface min-h-dvh flex flex-col max-w-[430px] mx-auto">
 
       {/* Header — minimal */}
-      <header className="sticky top-0 bg-surface-container-lowest/95 backdrop-blur-sm flex items-center justify-between px-6 pt-12 pb-4 z-50">
-        <span className="font-black text-primary text-xl tracking-tighter">Nudge</span>
+      <header className="sticky top-0 bg-surface-container-lowest/95 backdrop-blur-sm flex items-center justify-end px-6 pt-12 pb-4 z-50">
         <div className="flex items-center gap-3">
           {simMode && (
             <button
@@ -115,12 +114,6 @@ function MonitoringScreen({
               Sim
             </button>
           )}
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
-            <span className="text-[0.625rem] font-bold uppercase tracking-widest text-secondary">
-              Live
-            </span>
-          </div>
         </div>
       </header>
 
@@ -218,23 +211,47 @@ function HeroSection({
   routeSteps, pendingLegs, position, distanceToStop,
   simMode, etaMinutes, destination, currentLegIndex, totalLegs,
 }) {
-  // Count remaining major stops (transfers + destination)
-  const majorStopsRemaining = useMemo(() => {
-    const allSteps = routeSteps ?? []
-    const future = pendingLegs ?? []
-    const major = allSteps.filter(s =>
-      s.type === 'transfer' || s.type === 'alighting'
-    )
-    return major.length + future.length
-  }, [routeSteps, pendingLegs])
+  // Count ALL remaining stops, decrementing as user progresses
+  const stopsRemaining = useMemo(() => {
+    const steps = routeSteps ?? []
+    const futureLegStops = (pendingLegs ?? []).length
+    const total = steps.length + futureLegStops
 
-  const stopsLabel = majorStopsRemaining === 0 && distanceToStop != null && distanceToStop <= 600
+    if (!total) return 0
+
+    // Sim mode: no live GPS — estimate progress proportionally by distance
+    if (simMode && distanceToStop != null) {
+      const SIM_START = 3000
+      const fraction = Math.min(1, distanceToStop / SIM_START)
+      return Math.max(0, Math.round(total * fraction))
+    }
+
+    // Real GPS: count stops that are still ahead (closer to destination than user is)
+    if (position && steps.length) {
+      const dest = steps[steps.length - 1]
+      if (dest?.lat && dest?.lng) {
+        const userDist = distanceToStop ?? haversine(position.lat, position.lng, dest.lat, dest.lng)
+        const ahead = steps.filter(s => {
+          if (!s.lat || !s.lng) return false
+          return haversine(s.lat, s.lng, dest.lat, dest.lng) < userDist
+        })
+        return ahead.length + futureLegStops
+      }
+    }
+
+    return total
+  }, [routeSteps, pendingLegs, position, distanceToStop, simMode])
+
+  const isTransferLeg = totalLegs > 1 && currentLegIndex < totalLegs - 1
+  const stopTarget = isTransferLeg ? 'transfer' : 'destination'
+
+  const stopsLabel = distanceToStop != null && distanceToStop <= 600
     ? 'Arriving now'
-    : majorStopsRemaining === 0
+    : stopsRemaining === 0
       ? 'En route'
-      : majorStopsRemaining === 1
-        ? '1 stop away'
-        : `${majorStopsRemaining} stops away`
+      : stopsRemaining === 1
+        ? `1 stop till ${stopTarget}`
+        : `${stopsRemaining} stops till ${stopTarget}`
 
   const etaLabel = etaMinutes != null && etaMinutes > 0
     ? `~${etaMinutes} min`
@@ -765,13 +782,7 @@ function Phase1Screen({ destination, etaMinutes, dismissWarning, atPenultimateSt
 function ArrivedScreen({ destination }) {
   return (
     <div className="bg-surface-container-lowest text-on-surface min-h-dvh flex flex-col max-w-[430px] mx-auto">
-      <header className="bg-surface-container-lowest/95 backdrop-blur-sm text-primary font-black tracking-tighter uppercase text-xl w-full flex justify-between items-center px-6 py-7">
-        <span>Nudge</span>
-        <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
-          <span className="text-[0.625rem] font-bold uppercase tracking-widest text-secondary">Live</span>
-        </div>
-      </header>
+      <div className="pt-14" />
 
       <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
         <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center mx-auto mb-8">
@@ -829,7 +840,7 @@ function SafeTripScreen({ destination, onPlanAnother }) {
           onClick={onPlanAnother}
           className="w-full h-[52px] rounded-full border border-outline-variant/40 text-primary font-bold text-[1.0625rem] tracking-tight active:scale-95 transition-all"
         >
-          Start a journey
+          Start a trip
         </button>
       </div>
 
